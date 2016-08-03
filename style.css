@@ -1,0 +1,54 @@
+#tblItin {
+  color: #000;
+}
+
+#tblItin tr {
+  padding: 0;
+}
+
+#tblItin td {
+  margin: 0;
+}
+
+#tblItin input, #tblItin span {
+  display: flex;
+  flex-direction: column;
+  color: #333;
+}
+
+.itin span {
+  min-height: 20px;
+  padding: 3px;
+}
+
+#tblItin a {
+  font-weight: bolder;
+}
+
+.am {
+  background-color: #CFF;
+}
+
+.pm {
+  background-color: #FFDFFF;
+}
+
+td.staff {
+  width: 250px;
+}
+
+td.staff > div {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+}
+
+td.staff div div:last-child {
+  flex-wrap: wrap;
+  padding-left: 5px;
+}
+
+td.staff img {
+  width: 72px;
+  height: 72px;
+}
