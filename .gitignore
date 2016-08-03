@@ -214,6 +214,9 @@ pip-log.txt
 
 #Mr Developer
 .mr.developer.cfg
+
+#GoodSync
+_gsdata_
 *.gss
 *.gsl
 *._gs
