@@ -26,7 +26,7 @@ $(document).ready(function() {
       week--;
       $("#weekNo").data("offset", week);
       $("#weekNo").text(getWeekOf(week));
-      getItins(week);
+      getItinsJSON(week);
       ev.stopPropagation();
     });
 
@@ -40,7 +40,7 @@ $(document).ready(function() {
       week++;
       $("#weekNo").data("offset", week);
       $("#weekNo").text(getWeekOf(week));
-      getItins(week);
+      getItinsJSON(week);
       ev.stopPropagation();
     });
 
@@ -94,11 +94,11 @@ function refreshItins() {
     var td = $("<td/>", {
       "class": "staff",
       html: '<div>' +
-              '<div><img src="' + arrStaff[i].Picture + '"/></div>' +
-              '<div><a href="mailto:' + arrStaff[i].Email + '">' + arrStaff[i].Name + '</a>' +
-              '<span>' + arrStaff[i].JobTitle + '</span>' +
-              '<span>' + arrStaff[i].Phone + '</span></div>' +
-            '</div>',
+        '<div><img src="' + arrStaff[i].Picture + '"/></div>' +
+        '<div><a href="mailto:' + arrStaff[i].Email + '">' + arrStaff[i].Name + '</a>' +
+        '<span>' + arrStaff[i].JobTitle + '</span>' +
+        '<span>' + arrStaff[i].Phone + '</span></div>' +
+        '</div>',
       data: {
         staff: arrStaff[i].Name
       }
@@ -190,7 +190,7 @@ function refreshItins() {
     ev.stopPropagation();
   });
 
-  getItins($("#weekNo").data("offset"));
+  getItinsJSON($("#weekNo").data("offset"));
 }
 
 // Cleans data from the table without removing the controls
@@ -209,8 +209,41 @@ function enableFields() {
   $("#itin-splash button").removeClass("disabled");
 }
 
+function getItinsJSON(offset) {
+  if (arrStaff.length == 0) {
+    return;
+  } else {
+    resetFields();
+  }
+
+  var clauseStaff = "$filter=(Staff eq '" + arrStaff[0].Name + "'";
+  for (var i = 1; i < arrStaff.length; i++) {
+    clauseStaff += " or Staff eq '" + arrStaff[i].Name + "'";
+  }
+
+  var searchUrl = _spPageContextInfo.webAbsoluteUrl +
+    "/_api/web/lists/GetByTitle('Itineraries')/items?" +
+    "$select=Staff/Title,Date,AM,PM&$expand=Staff&" +
+    clauseStaff + ") and Date ge DateTime'" +
+    getDayOfWeek(offset, 1).toJSON() + "' and Date le DateTime'" +
+    getDayOfWeek(offset, 5).toJSON() + "'&$orderby=Staff desc";
+
+  console.log(searchUrl);
+  $.ajax({
+    url: searchUrl,
+    type: "GET",
+    headers: {
+      "Accept": "application/json; odata=verbose"
+    },
+    success: function(data) {
+      console.log(data.d.results);
+    },
+    error: onQueryFailedJSON
+  });
+}
+
 // Requests itin data for the current list of staff in arrStaff.
-function getItins(offset) {
+function getItinsJSON(offset) {
   if (arrStaff.length == 0) {
     return;
   } else {
@@ -221,73 +254,49 @@ function getItins(offset) {
   var monday = (offset * 7) - d.getDay();
   var friday = (offset * 7) - d.getDay() + 5;
   //console.log("monday: " + monday + " friday: " + friday);
-  var clauseStaff = "<In><FieldRef Name='Staff' /><Values>";
-  for (var i = 0; i < arrStaff.length; i++) {
-    clauseStaff += "<Value Type='User'>" + arrStaff[i].Name + "</Value>";
+
+  var clauseStaff = "$filter=(Staff eq '" + arrStaff[0].Name + "'";
+  for (var i = 1; i < arrStaff.length; i++) {
+    clauseStaff += " or Staff eq '" + arrStaff[i].Name + "'";
   }
 
-  clauseStaff += "</Values></In>";
+  var searchUrl = _spPageContextInfo.webAbsoluteUrl +
+    "/_api/web/lists/GetByTitle('Itineraries')/items?" +
+    "$select=StaffId,Staff/Title,Date,AM,PM&$expand=Staff&" +
+    clauseStaff + ") and Date ge DateTime'" +
+    getDayOfWeek(offset, 1).toJSON() + "' and Date le DateTime'" +
+    getDayOfWeek(offset, 5).toJSON() + "'&$orderby=Staff desc";
 
-  var camlQuery = new SP.CamlQuery();
-  var camlQueryText = "<View>" +
-    "<Query>" +
-    "<Where>" +
-    "<And>" +
-    "<And>" +
-    "<Leq>" +
-    "<FieldRef Name='Date' /> " +
-    "<Value IncludeTimeValue='TRUE' Type='DateTime'><Today OffsetDays= '" + friday + "' /></Value>" +
-    "</Leq>" +
-    "<Geq>" +
-    "<FieldRef Name='Date' />" +
-    "<Value IncludeTimeValue='TRUE' Type='DateTime'><Today OffsetDays= '" + monday + "' /></Value>" +
-    "</Geq>" +
-    "</And>" +
-    clauseStaff +
-    "</And>" +
-    "</Where>" +
-    "<OrderBy>" +
-    "<FieldRef Name='Staff' Ascending='False' />" +
-    "</OrderBy>" +
-    "</Query>" +
-    "</View>";
-
-  //console.log(camlQueryText);
-  camlQuery.set_viewXml(camlQueryText);
-  this.clcnItinListItems = oList.getItems(camlQuery);
-  context.load(clcnItinListItems);
-  context.executeQueryAsync(
-    Function.createDelegate(this, this.onItins),
-    Function.createDelegate(this, this.onQueryFailed)
-  );
+  console.log(searchUrl);
+  $.ajax({
+    url: searchUrl,
+    type: "GET",
+    headers: {
+      "Accept": "application/json; odata=verbose"
+    },
+    success: onItinsJSON,
+    error: onQueryFailedJSON
+  });
 }
 
 // Populate the Itin table with the queried data
-function onItins(sender, args) {
-  var count = clcnItinListItems.get_count();
-  if (count > 0) {
-    var listItemInfo = "";
-    var listItemEnumerator = clcnItinListItems.getEnumerator();
-    while (listItemEnumerator.moveNext()) {
-      var oListItem = listItemEnumerator.get_current();
-      var id = oListItem.get_id();
-      var am = oListItem.get_item('AM');
-      var pm = oListItem.get_item('PM');
-      var date = oListItem.get_item('Date');
-      var staff = oListItem.get_item('Staff').get_lookupValue();
-
-      $(".staff:contains('" + staff + "') ~ .itin:eq(" + (date.getDay() - 1) + ")").data("id", id);
+function onItinsJSON(data) {
+  var results = data.d.results;
+  if (results.length > 0) {
+    $.each(results, function(index, result) {
+      var date = new Date(result.Date);
+      var index = date.getDay() - 1;
+      console.log(".staff:contains('" + result.Staff.Title + "') ~ .itin .am:eq(" + index + ")");
+      $(".staff:contains('" + result.Staff.Title + "') ~ .itin:eq(" + index + ")").data("id", result.StaffId);
       // Verify Edit Mode ON/OFF state and populate the correct controls.
       if ($("#btnEdit").hasClass("btn-primary")) {
-        $(".staff:contains('" + staff + "') ~ .itin .am:eq(" + (date.getDay() - 1) + ")").val(am);
-        $(".staff:contains('" + staff + "') ~ .itin .pm:eq(" + (date.getDay() - 1) + ")").val(pm);
+        $(".staff:contains('" + result.Staff.Title + "') ~ .itin .am:eq(" + index + ")").val(result.AM);
+        $(".staff:contains('" + result.Staff.Title + "') ~ .itin .pm:eq(" + index + ")").val(result.PM);
       } else {
-        $(".staff:contains('" + staff + "') ~ .itin .am:eq(" + (date.getDay() - 1) + ")").html(am);
-        $(".staff:contains('" + staff + "') ~ .itin .pm:eq(" + (date.getDay() - 1) + ")").html(pm);
+        $(".staff:contains('" + result.Staff.Title + "') ~ .itin .am:eq(" + index + ")").html(result.AM);
+        $(".staff:contains('" + result.Staff.Title + "') ~ .itin .pm:eq(" + index + ")").html(result.PM);
       }
-
-      //console.log(staff + " - " + date + " - " + date.getDay() + " - AM:" + am + " PM:" + pm);
-    }
+    });
   } else {
     console.log("No itin record found.");
   }
@@ -300,16 +309,8 @@ function onQueryFailed(sender, args) {
     '\n' + args.get_stackTrace());
 }
 
-function getAutoComplete() {
-
-}
-
-function onAutoComplete() {
-
-}
-
-function getStaff() {
-
+function onQueryFailedJSON(data, errorCode, errorMessage) {
+  console.log('Request failed. ' + errorCode + ': ' + errorMessage);
 }
 
 // Requests staff list of a department or office(strName)
@@ -320,76 +321,46 @@ function getStaff() {
 function getStaffList(strName, strType) {
   resetFields();
   var searchTerm = strType + '="' + strName + '" JobTitle<>"Support" AND (' +
-  'JobTitle:"a*" JobTitle:"b*" JobTitle:"c*" JobTitle:"d*" JobTitle:"e*"' +
-  'JobTitle:"f*" JobTitle:"g*" JobTitle:"h*" JobTitle:"i*" JobTitle:"j*"' +
-  'JobTitle:"k*" JobTitle:"l*" JobTitle:"m*" JobTitle:"n*" JobTitle:"o*"' +
-  'JobTitle:"p*" JobTitle:"q*" JobTitle:"r*" JobTitle:"s*" JobTitle:"t*"' +
-  'JobTitle:"u*" JobTitle:"v*" JobTitle:"w*" JobTitle:"x*" JobTitle:"y*"' +
-  'JobTitle:"z*" JobTitle:"0*" JobTitle:"1*" JobTitle:"2*" JobTitle:"3*"' +
-  'JobTitle:"4*" JobTitle:"5*" JobTitle:"6*" JobTitle:"7*" JobTitle:"8*"' +
-  'JobTitle:"9*")';
-  var keywordQuery = new Microsoft.SharePoint.Client.Search.Query.KeywordQuery(context);
+    'JobTitle:"a*" JobTitle:"b*" JobTitle:"c*" JobTitle:"d*" JobTitle:"e*"' +
+    'JobTitle:"f*" JobTitle:"g*" JobTitle:"h*" JobTitle:"i*" JobTitle:"j*"' +
+    'JobTitle:"k*" JobTitle:"l*" JobTitle:"m*" JobTitle:"n*" JobTitle:"o*"' +
+    'JobTitle:"p*" JobTitle:"q*" JobTitle:"r*" JobTitle:"s*" JobTitle:"t*"' +
+    'JobTitle:"u*" JobTitle:"v*" JobTitle:"w*" JobTitle:"x*" JobTitle:"y*"' +
+    'JobTitle:"z*" JobTitle:"0*" JobTitle:"1*" JobTitle:"2*" JobTitle:"3*"' +
+    'JobTitle:"4*" JobTitle:"5*" JobTitle:"6*" JobTitle:"7*" JobTitle:"8*"' +
+    'JobTitle:"9*")';
   var searchUrl = _spPageContextInfo.webAbsoluteUrl +
-                  "/_api/search/query?querytext='" + searchTerm +
-                  "'&sortlist='PreferredName:ascending'&" +
-                  "selectproperties='PreferredName,JobTitle,WorkPhone,WorkEmail'&" +
-                  "sourceid='B09A7990-05EA-4AF9-81EF-EDFAB16C4E31'&" +
-                  "rowlimit='100'";
-  var executor = new SP.RequestExecutor(_spPageContextInfo.webAbsoluteUrl);
-  executor.executeAsync(
-    {
-      url: searchUrl,
-      method: "GET",
-      headers: { "Accept": "application/json; odata=verbose" },
-      success: function (data) {
-        var jsonObject = JSON.parse(data.body);
-        var results = jsonObject.d.query.PrimaryQueryResult.RelevantResults.Table.Rows.results;
-        if (results.length == 0) {
-          console.log('No related documents were found');
-        } else {
-          $.each(results, function (index, result) {
-              console.log(result);
-          });
-        }
-      },
-      error: function (data, errorCode, errorMessage) {
-        console.log(errorCode + ': ' + errorMessage);
-      }
-    }
-  );
-
-  // Sorting (Ascending = 0, Descending = 1)
-  keywordQuery.set_enableSorting(true);
-  var sortproperties = keywordQuery.get_sortList();
-  sortproperties.add("PreferredName", 0);
-  var properties = keywordQuery.get_selectProperties();
-  properties.add("WorkPhone");
-
-  keywordQuery.set_queryText(searchTerm);
-  keywordQuery.set_sourceId('B09A7990-05EA-4AF9-81EF-EDFAB16C4E31');
-  keywordQuery.set_rowLimit(100);
-  keywordQuery.set_trimDuplicates(false);
-  var searchExecutor = new Microsoft.SharePoint.Client.Search.Query.SearchExecutor(context);
-  results = searchExecutor.executeQuery(keywordQuery);
-  context.executeQueryAsync(Function.createDelegate(this, onStaffList),
-    Function.createDelegate(this, onQueryFailed));
+    "/_api/search/query?querytext='" + searchTerm +
+    "'&sortlist='PreferredName:ascending'&" +
+    "selectproperties='PreferredName,PictureURL,JobTitle,WorkPhone,WorkEmail'&" +
+    "sourceid='B09A7990-05EA-4AF9-81EF-EDFAB16C4E31'&" +
+    "rowlimit='100'";
+  $.ajax({
+    url: searchUrl,
+    type: "GET",
+    headers: {
+      "Accept": "application/json; odata=verbose"
+    },
+    success: onStaffListJSON,
+    error: onQueryFailedJSON
+  });
 }
 
 // Writes Staff names into arrStaff and reloads the itin table
-function onStaffList() {
+function onStaffListJSON(data) {
   arrStaff = [];
 
-  if (results.m_value.ResultTables[0].ResultRows.length > 0) {
-    $.each(results.m_value.ResultTables[0].ResultRows, function() {
+  var results = data.d.query.PrimaryQueryResult.RelevantResults.Table.Rows.results;
+  if (results.length > 0) {
+    $.each(results, function(index, result) {
       var item = {
-        'Name': this.PreferredName,
-        'Picture': (this.PictureURL != null?this.PictureURL:'/_layouts/15/images/person.gif'),
-        'Email': this.WorkEmail,
-        'Phone': (this.WorkPhone != null?this.WorkPhone:''),
-        'JobTitle': this.JobTitle
+        'Name': result.Cells.results[2].Value,
+        'Picture': (result.Cells.results[3].Value != null ? result.Cells.results[3].Value : '/_layouts/15/images/person.gif'),
+        'Email': result.Cells.results[6].Value,
+        'Phone': (result.Cells.results[5].Value != null ? result.Cells.results[5].Value : ''),
+        'JobTitle': result.Cells.results[4].Value
       };
       arrStaff.push(item);
-      //console.log(this);
     });
 
     // Since there are results and the form is currently on splash div,
