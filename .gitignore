@@ -220,3 +220,6 @@ _gsdata_
 *.gss
 *.gsl
 *._gs
+
+#Atom Ternjs
+.tern-project
