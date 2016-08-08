@@ -183,6 +183,24 @@ function refreshItins() {
       context.load(oListItem);
       context.executeQueryAsync(Function.createDelegate(this, onCreate),
         Function.createDelegate(this, onQueryFailed));
+
+      /**$.ajax({
+        url: "",
+        method: "POST",
+        body: "{ '__metadata': { 'type': 'SP.Data.ItinerariesListItem' }," +
+              "'StaffId':'" +  + "'," +
+              "'Date':'" + results + "'," +
+              "'AM':'" +  + "'," +
+              "'PM':'" +  + "'}",
+        headers: {
+          "accept":"application/json;odata=verbose",
+          "content-type":"application/json;odata=verbose"
+        },
+        sucess: function (data){
+          console.log(data);
+        }
+        error: onQueryFailedJSON
+      });**/
     } else { // Input is empty and there is no existing itemId
       console.log("Exception: Input is empty and there is no existing itemId.");
     }
@@ -207,39 +225,6 @@ function resetFields() {
 function enableFields() {
   $("#itin-main button, #itin-main input").removeClass("disabled");
   $("#itin-splash button").removeClass("disabled");
-}
-
-function getItinsJSON(offset) {
-  if (arrStaff.length == 0) {
-    return;
-  } else {
-    resetFields();
-  }
-
-  var clauseStaff = "$filter=(Staff eq '" + arrStaff[0].Name + "'";
-  for (var i = 1; i < arrStaff.length; i++) {
-    clauseStaff += " or Staff eq '" + arrStaff[i].Name + "'";
-  }
-
-  var searchUrl = _spPageContextInfo.webAbsoluteUrl +
-    "/_api/web/lists/GetByTitle('Itineraries')/items?" +
-    "$select=Staff/Title,Date,AM,PM&$expand=Staff&" +
-    clauseStaff + ") and Date ge DateTime'" +
-    getDayOfWeek(offset, 1).toJSON() + "' and Date le DateTime'" +
-    getDayOfWeek(offset, 5).toJSON() + "'&$orderby=Staff desc";
-
-  console.log(searchUrl);
-  $.ajax({
-    url: searchUrl,
-    type: "GET",
-    headers: {
-      "Accept": "application/json; odata=verbose"
-    },
-    success: function(data) {
-      console.log(data.d.results);
-    },
-    error: onQueryFailedJSON
-  });
 }
 
 // Requests itin data for the current list of staff in arrStaff.
@@ -281,12 +266,12 @@ function getItinsJSON(offset) {
 
 // Populate the Itin table with the queried data
 function onItinsJSON(data) {
+  console.log(data);
   var results = data.d.results;
   if (results.length > 0) {
     $.each(results, function(index, result) {
       var date = new Date(result.Date);
       var index = date.getDay() - 1;
-      console.log(".staff:contains('" + result.Staff.Title + "') ~ .itin .am:eq(" + index + ")");
       $(".staff:contains('" + result.Staff.Title + "') ~ .itin:eq(" + index + ")").data("id", result.StaffId);
       // Verify Edit Mode ON/OFF state and populate the correct controls.
       if ($("#btnEdit").hasClass("btn-primary")) {
@@ -335,6 +320,7 @@ function getStaffList(strName, strType) {
     "selectproperties='PreferredName,PictureURL,JobTitle,WorkPhone,WorkEmail'&" +
     "sourceid='B09A7990-05EA-4AF9-81EF-EDFAB16C4E31'&" +
     "rowlimit='100'";
+  console.log(searchUrl);
   $.ajax({
     url: searchUrl,
     type: "GET",
