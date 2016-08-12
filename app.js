@@ -57,6 +57,12 @@ $(document).ready(function() {
       if ($(ev.currentTarget).hasClass("disabled"))
         return;
 
+      if (!isReadyForEdit) {
+        alert("Hold your horses dear! Data are still being crunched... Try again soon!");
+        return;
+      }
+
+
       if ($(this).hasClass("btn-default")) {
         $(this).removeClass("btn-default");
         $(this).addClass("btn-primary");
@@ -79,6 +85,22 @@ $(document).ready(function() {
   });
 });
 
+function escapeURL(string) {
+  return String(string).replace(/[&<>'\/]/g, function(s) {
+    var entityMap = {
+      "&": "%26",
+      "<": "%3C",
+      ">": "%3E",
+      "'": '%60',
+      "\\": "%5C",
+      "[": "%5B",
+      "]": "%5D"
+    };
+
+    return entityMap[s];
+  });
+}
+
 /**
   Reloads the table with appropriate controls based on
   list of staff and Edit button state. Only empties the
@@ -100,6 +122,7 @@ function refreshItins() {
         '<span>' + arrStaff[i].Phone + '</span></div>' +
         '</div>',
       data: {
+        id: (arrStaff[i].ID ? arrStaff[i].ID : -1),
         staff: arrStaff[i].Name
       }
     });
@@ -148,6 +171,21 @@ function refreshItins() {
     var staff = $(this).parent().parent().children().eq(0).data("staff");
 
     var itemId = $(this).parent().data("id");
+    var jsonData = {
+      "__metadata": {
+        "type": "SP.Data.ItinerariesListItem"
+      },
+      "StaffId": $(this).parent().siblings(":first").data("id"),
+      "Date": day.toJSON(),
+      "AM": "",
+      "PM": ""
+    }
+
+    if ($(this).hasClass('am'))
+      jsonData.AM = this.value;
+    else
+      jsonData.PM = this.value;
+
     if (itemId != undefined && itemId != '') {
       var strSibling = $(this).siblings().eq(0).val();
       if ((strSibling == null || strSibling == '') &&
@@ -167,40 +205,39 @@ function refreshItins() {
         oListItem.update();
         context.executeQueryAsync(Function.createDelegate(this, onUpdate),
           Function.createDelegate(this, onQueryFailed));
+
+        /**$.ajax({
+          url: _spPageContextInfo.webAbsoluteUrl +
+            "/_api/web/lists/GetByTitle('Itineraries')/items",
+          method: "POST",
+          data: JSON.stringify(jsonData),
+          headers: {
+            "X-RequestDigest": $("#__REQUESTDIGEST").val(),
+            "accept": "application/json;odata=verbose",
+            "content-type": "application/json;odata=verbose",
+            "X-HHTP-Method": "MERGE"
+          },
+          context: $(this),
+          success: onUpdateJSON,
+          error: onQueryFailedJSON
+        });**/
       }
     } else if (this.value != null && this.value != '') {
       // Create Record
-      var itemCreateInfo = new SP.ListItemCreationInformation();
-      oListItem = oList.addItem(itemCreateInfo);
-      oListItem.set_item('Date', day);
-      oListItem.set_item('Staff', SP.FieldUserValue.fromUser(staff));
-      if ($(this).hasClass('am'))
-        oListItem.set_item('AM', this.value);
-      else
-        oListItem.set_item('PM', this.value);
-
-      oListItem.update();
-      context.load(oListItem);
-      context.executeQueryAsync(Function.createDelegate(this, onCreate),
-        Function.createDelegate(this, onQueryFailed));
-
-      /**$.ajax({
-        url: "",
+      $.ajax({
+        url: _spPageContextInfo.webAbsoluteUrl +
+          "/_api/web/lists/GetByTitle('Itineraries')/items",
         method: "POST",
-        body: "{ '__metadata': { 'type': 'SP.Data.ItinerariesListItem' }," +
-              "'StaffId':'" +  + "'," +
-              "'Date':'" + results + "'," +
-              "'AM':'" +  + "'," +
-              "'PM':'" +  + "'}",
+        data: JSON.stringify(jsonData),
         headers: {
-          "accept":"application/json;odata=verbose",
-          "content-type":"application/json;odata=verbose"
+          "X-RequestDigest": $("#__REQUESTDIGEST").val(),
+          "accept": "application/json;odata=verbose",
+          "content-type": "application/json;odata=verbose"
         },
-        sucess: function (data){
-          console.log(data);
-        }
+        context: $(this),
+        success: onCreateJSON,
         error: onQueryFailedJSON
-      });**/
+      });
     } else { // Input is empty and there is no existing itemId
       console.log("Exception: Input is empty and there is no existing itemId.");
     }
@@ -209,6 +246,21 @@ function refreshItins() {
   });
 
   getItinsJSON($("#weekNo").data("offset"));
+}
+
+function onCreateJSON(data) {
+  $(this).parent().data("id", data.d.ID);
+  $(this).parent().children().removeClass("disabled");
+  console.log("itemID " + data.d.ID + " created");
+}
+
+function onUpdateJSON(data) {
+  $(this).parent().children().removeClass("disabled");
+  console.log("itemID " + data.d.ID + " created");
+}
+
+function onDeleteJSON(data) {
+  console.log(data);
 }
 
 // Cleans data from the table without removing the controls
@@ -235,22 +287,17 @@ function getItinsJSON(offset) {
     resetFields();
   }
 
-  var d = new Date();
-  var monday = (offset * 7) - d.getDay();
-  var friday = (offset * 7) - d.getDay() + 5;
-  //console.log("monday: " + monday + " friday: " + friday);
-
-  var clauseStaff = "$filter=(Staff eq '" + arrStaff[0].Name + "'";
+  var clauseStaff = "$filter=(Staff eq '" + escapeURL(arrStaff[0].Name) + "'";
   for (var i = 1; i < arrStaff.length; i++) {
-    clauseStaff += " or Staff eq '" + arrStaff[i].Name + "'";
+    clauseStaff += " or Staff eq '" + escapeURL(arrStaff[i].Name) + "'";
   }
 
   var searchUrl = _spPageContextInfo.webAbsoluteUrl +
     "/_api/web/lists/GetByTitle('Itineraries')/items?" +
-    "$select=StaffId,Staff/Title,Date,AM,PM&$expand=Staff&" +
-    clauseStaff + ") and Date ge DateTime'" +
-    getDayOfWeek(offset, 1).toJSON() + "' and Date le DateTime'" +
-    getDayOfWeek(offset, 5).toJSON() + "'&$orderby=Staff desc";
+    "$select=ID,StaffId,Staff/Title,Date,AM,PM&$expand=Staff&" +
+    clauseStaff + ") and Date ge DateTime'" + getDayOfWeek(offset, 1).toJSON().slice(0, 11) +
+    "00:00:00.000Z' and Date le DateTime'" + getDayOfWeek(offset, 5).toJSON().slice(0, 11) +
+    "23:59:59.999Z'&$orderby=Staff desc";
 
   console.log(searchUrl);
   $.ajax({
@@ -266,13 +313,13 @@ function getItinsJSON(offset) {
 
 // Populate the Itin table with the queried data
 function onItinsJSON(data) {
-  console.log(data);
+  //console.log(data);
   var results = data.d.results;
   if (results.length > 0) {
     $.each(results, function(index, result) {
       var date = new Date(result.Date);
       var index = date.getDay() - 1;
-      $(".staff:contains('" + result.Staff.Title + "') ~ .itin:eq(" + index + ")").data("id", result.StaffId);
+      $(".staff:contains('" + result.Staff.Title + "') ~ .itin:eq(" + index + ")").data("id", result.ID);
       // Verify Edit Mode ON/OFF state and populate the correct controls.
       if ($("#btnEdit").hasClass("btn-primary")) {
         $(".staff:contains('" + result.Staff.Title + "') ~ .itin .am:eq(" + index + ")").val(result.AM);
@@ -295,7 +342,10 @@ function onQueryFailed(sender, args) {
 }
 
 function onQueryFailedJSON(data, errorCode, errorMessage) {
-  console.log('Request failed. ' + errorCode + ': ' + errorMessage);
+  if (data.responseJSON != null)
+    console.log(data.responseJSON.error.code + ': ' + data.responseJSON.error.message.value);
+  else
+    console.log(data);
 }
 
 // Requests staff list of a department or office(strName)
@@ -317,7 +367,7 @@ function getStaffList(strName, strType) {
   var searchUrl = _spPageContextInfo.webAbsoluteUrl +
     "/_api/search/query?querytext='" + searchTerm +
     "'&sortlist='PreferredName:ascending'&" +
-    "selectproperties='PreferredName,PictureURL,JobTitle,WorkPhone,WorkEmail'&" +
+    "selectproperties='PreferredName,PictureURL,JobTitle,WorkPhone,WorkEmail,AccountName'&" +
     "sourceid='B09A7990-05EA-4AF9-81EF-EDFAB16C4E31'&" +
     "rowlimit='100'";
   console.log(searchUrl);
@@ -338,15 +388,43 @@ function onStaffListJSON(data) {
 
   var results = data.d.query.PrimaryQueryResult.RelevantResults.Table.Rows.results;
   if (results.length > 0) {
+    numReadyForEdit = 0; // Counter for all async calls which has completed retrieving Staff id
+    isReadyForEdit = false; // Flag for the Edit button click event to decide whether to swap in input controls.
     $.each(results, function(index, result) {
       var item = {
+        'ID': null,
         'Name': result.Cells.results[2].Value,
         'Picture': (result.Cells.results[3].Value != null ? result.Cells.results[3].Value : '/_layouts/15/images/person.gif'),
         'Email': result.Cells.results[6].Value,
         'Phone': (result.Cells.results[5].Value != null ? result.Cells.results[5].Value : ''),
-        'JobTitle': result.Cells.results[4].Value
+        'JobTitle': result.Cells.results[4].Value,
+        'AccountName': result.Cells.results[7].Value
       };
+
       arrStaff.push(item);
+
+      $.ajax({
+        url: _spPageContextInfo.webAbsoluteUrl + "/_api/web/ensureuser",
+        type: "POST",
+        data: JSON.stringify({
+          "logonName": item.AccountName
+        }),
+        headers: {
+          "X-RequestDigest": $("#__REQUESTDIGEST").val(),
+          "Accept": "application/json; odata=verbose",
+          "content-type": "application/json;odata=verbose"
+        },
+        indexValue: index,
+        success: function(data) {
+          arrStaff[index].ID = data.d.Id;
+          $(".staff").eq(index).data("id", data.d.Id);
+          //console.log(arrStaff[index].ID + ": " + arrStaff[index].Name);
+          numReadyForEdit++;
+          if (arrStaff.length == numReadyForEdit)
+            isReadyForEdit = true;
+        },
+        error: onQueryFailedJSON
+      });
     });
 
     // Since there are results and the form is currently on splash div,
