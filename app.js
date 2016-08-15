@@ -2,8 +2,6 @@ var arrStaff = [];
 var context = new SP.ClientContext.get_current();
 var web = context.get_web();
 var user = web.get_currentUser();
-var oList = web.get_lists().getByTitle('Itineraries');
-var oListItem = null;
 
 $(document).ready(function() {
   // On page load, display the current week based on today's date.
@@ -58,10 +56,9 @@ $(document).ready(function() {
         return;
 
       if (!isReadyForEdit) {
-        alert("Hold your horses dear! Data are still being crunched... Try again soon!");
+        alert("Hold your horses dear! Data is still being crunched... Try again soon!");
         return;
       }
-
 
       if ($(this).hasClass("btn-default")) {
         $(this).removeClass("btn-default");
@@ -176,9 +173,7 @@ function refreshItins() {
         "type": "SP.Data.ItinerariesListItem"
       },
       "StaffId": $(this).parent().siblings(":first").data("id"),
-      "Date": day.toJSON(),
-      "AM": "",
-      "PM": ""
+      "Date": day.toJSON()
     }
 
     if ($(this).hasClass('am'))
@@ -191,36 +186,39 @@ function refreshItins() {
       if ((strSibling == null || strSibling == '') &&
         (this.value == null || this.value == '')) {
         // Delete Record
-        oListItem = oList.getItemById(itemId);
-        oListItem.deleteObject();
-        context.executeQueryAsync(Function.createDelegate(this, onDelete),
-          Function.createDelegate(this, onQueryFailed));
+        $.ajax({
+          url: _spPageContextInfo.webAbsoluteUrl +
+            "/_api/web/lists/GetByTitle('Itineraries')/items(" + itemId + ")",
+          method: "POST",
+          headers: {
+            "X-RequestDigest": $("#__REQUESTDIGEST").val(),
+            "accept": "application/json;odata=verbose",
+            "content-type": "application/json;odata=verbose",
+            "X-HTTP-Method": "DELETE",
+            "IF-MATCH": "*"
+          },
+          context: $(this),
+          success: onDeleteJSON,
+          error: onQueryFailedJSON
+        });
       } else {
         // Update Record
-        oListItem = oList.getItemById(itemId);
-        if ($(this).hasClass('am'))
-          oListItem.set_item('AM', this.value);
-        else
-          oListItem.set_item('PM', this.value);
-        oListItem.update();
-        context.executeQueryAsync(Function.createDelegate(this, onUpdate),
-          Function.createDelegate(this, onQueryFailed));
-
-        /**$.ajax({
+        $.ajax({
           url: _spPageContextInfo.webAbsoluteUrl +
-            "/_api/web/lists/GetByTitle('Itineraries')/items",
+            "/_api/web/lists/GetByTitle('Itineraries')/items(" + itemId + ")",
           method: "POST",
           data: JSON.stringify(jsonData),
           headers: {
             "X-RequestDigest": $("#__REQUESTDIGEST").val(),
             "accept": "application/json;odata=verbose",
             "content-type": "application/json;odata=verbose",
-            "X-HHTP-Method": "MERGE"
+            "X-HTTP-Method": "MERGE",
+            "IF-MATCH": "*"
           },
           context: $(this),
           success: onUpdateJSON,
           error: onQueryFailedJSON
-        });**/
+        });
       }
     } else if (this.value != null && this.value != '') {
       // Create Record
@@ -255,12 +253,14 @@ function onCreateJSON(data) {
 }
 
 function onUpdateJSON(data) {
+  console.log("ItemID " + $(this).parent().data('id') + " updated.");
   $(this).parent().children().removeClass("disabled");
-  console.log("itemID " + data.d.ID + " created");
 }
 
 function onDeleteJSON(data) {
-  console.log(data);
+  console.log("ItemID " + $(this).parent().data('id') + " deleted.");
+  $(this).parent().removeData();
+  $(this).parent().children().removeClass("disabled");
 }
 
 // Cleans data from the table without removing the controls
@@ -458,24 +458,6 @@ function onStaffListJSON(data) {
   }
 
   enableFields();
-}
-
-function onCreate(sender, args) {
-  $(this).parent().data('id', oListItem.get_id());
-  $(this).parent().children().removeClass("disabled");
-  console.log("ItemID " + oListItem.get_id() + " created.");
-}
-
-function onUpdate(sender, args) {
-  $(this).parent().children().removeClass("disabled");
-  console.log("ItemID " + $(this).parent().data('id') + " updated.");
-}
-
-function onDelete(sender, args) {
-  $(this).parent().children().removeClass("disabled");
-  console.log("ItemID " + $(this).parent().data('id') + " deleted.");
-  $(this).parent().removeData();
-  $(this).siblings().val('');
 }
 
 // Returns the week dates in a string.
