@@ -299,7 +299,7 @@ function getItinsJSON(offset) {
     "00:00:00.000Z' and Date le DateTime'" + getDayOfWeek(offset, 5).toJSON().slice(0, 11) +
     "23:59:59.999Z'&$orderby=Staff desc";
 
-  console.log(searchUrl);
+  //console.log(searchUrl);
   $.ajax({
     url: searchUrl,
     type: "GET",
@@ -370,7 +370,7 @@ function getStaffList(strName, strType) {
     "selectproperties='PreferredName,PictureURL,JobTitle,WorkPhone,WorkEmail,AccountName'&" +
     "sourceid='B09A7990-05EA-4AF9-81EF-EDFAB16C4E31'&" +
     "rowlimit='100'";
-  console.log(searchUrl);
+  //console.log(searchUrl);
   $.ajax({
     url: searchUrl,
     type: "GET",
