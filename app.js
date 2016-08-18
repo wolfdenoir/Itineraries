@@ -1,4 +1,6 @@
 var arrStaff = [];
+var arrTypeahead = [];
+var mapTypeahead = {};
 var context = new SP.ClientContext.get_current();
 var web = context.get_web();
 var user = web.get_currentUser();
@@ -76,7 +78,7 @@ $(document).ready(function() {
   context.load(user);
   context.executeQueryAsync(function() {
     console.log(user);
-    getDeptTerms();
+    getTypeaheadTerms();
   }, function() {
     alert("Connection Failed. Refresh the page and try again. :(");
   });
@@ -348,29 +350,40 @@ function onQueryFailedJSON(data, errorCode, errorMessage) {
     console.log(data);
 }
 
-// Requests staff list of a department or office(strName)
+// Requests staff list of a department or office, or just a single staff(strName)
 // from Local People Results
 // args:
-// strName - name of the department/office chosen
-// strType - whether strName is a department or office
+// strName - name of the department/office/staff
+// strType - whether strName is a department or office or staff
 function getStaffList(strName, strType) {
+  var searchTerm = '';
+  var searchUrl = '';
   resetFields();
-  var searchTerm = strType + '="' + strName + '" JobTitle<>"Support" AND (' +
-    'JobTitle:"a*" JobTitle:"b*" JobTitle:"c*" JobTitle:"d*" JobTitle:"e*"' +
-    'JobTitle:"f*" JobTitle:"g*" JobTitle:"h*" JobTitle:"i*" JobTitle:"j*"' +
-    'JobTitle:"k*" JobTitle:"l*" JobTitle:"m*" JobTitle:"n*" JobTitle:"o*"' +
-    'JobTitle:"p*" JobTitle:"q*" JobTitle:"r*" JobTitle:"s*" JobTitle:"t*"' +
-    'JobTitle:"u*" JobTitle:"v*" JobTitle:"w*" JobTitle:"x*" JobTitle:"y*"' +
-    'JobTitle:"z*" JobTitle:"0*" JobTitle:"1*" JobTitle:"2*" JobTitle:"3*"' +
-    'JobTitle:"4*" JobTitle:"5*" JobTitle:"6*" JobTitle:"7*" JobTitle:"8*"' +
-    'JobTitle:"9*")';
-  var searchUrl = _spPageContextInfo.webAbsoluteUrl +
-    "/_api/search/query?querytext='" + searchTerm +
-    "'&sortlist='PreferredName:ascending'&" +
-    "selectproperties='PreferredName,PictureURL,JobTitle,WorkPhone,WorkEmail,AccountName'&" +
-    "sourceid='B09A7990-05EA-4AF9-81EF-EDFAB16C4E31'&" +
-    "rowlimit='100'";
+  if (strType == "staff") {
+    searchUrl = _spPageContextInfo.webAbsoluteUrl +
+      "/_api/search/query?querytext='PreferredName=\"" + escapeURL(strName) +
+      "\"'&selectproperties='PreferredName,PictureURL,JobTitle,WorkPhone,WorkEmail,AccountName'&" +
+      "sourceid='B09A7990-05EA-4AF9-81EF-EDFAB16C4E31'";
+  } else {
+    searchTerm = strType + '="' + strName + '" JobTitle<>"Support" AND (' +
+      'JobTitle:"a*" JobTitle:"b*" JobTitle:"c*" JobTitle:"d*" JobTitle:"e*"' +
+      'JobTitle:"f*" JobTitle:"g*" JobTitle:"h*" JobTitle:"i*" JobTitle:"j*"' +
+      'JobTitle:"k*" JobTitle:"l*" JobTitle:"m*" JobTitle:"n*" JobTitle:"o*"' +
+      'JobTitle:"p*" JobTitle:"q*" JobTitle:"r*" JobTitle:"s*" JobTitle:"t*"' +
+      'JobTitle:"u*" JobTitle:"v*" JobTitle:"w*" JobTitle:"x*" JobTitle:"y*"' +
+      'JobTitle:"z*" JobTitle:"0*" JobTitle:"1*" JobTitle:"2*" JobTitle:"3*"' +
+      'JobTitle:"4*" JobTitle:"5*" JobTitle:"6*" JobTitle:"7*" JobTitle:"8*"' +
+      'JobTitle:"9*")';
+    searchUrl = _spPageContextInfo.webAbsoluteUrl +
+      "/_api/search/query?querytext='" + searchTerm +
+      "'&sortlist='PreferredName:ascending'&" +
+      "selectproperties='PreferredName,PictureURL,JobTitle,WorkPhone,WorkEmail,AccountName'&" +
+      "sourceid='B09A7990-05EA-4AF9-81EF-EDFAB16C4E31'&" +
+      "rowlimit='100'";
+  }
+
   //console.log(searchUrl);
+
   $.ajax({
     url: searchUrl,
     type: "GET",
@@ -403,6 +416,8 @@ function onStaffListJSON(data) {
 
       arrStaff.push(item);
 
+      // This async call retrieves the User ID at the SiteCollection level
+      // It also ensures the user is available for record creation
       $.ajax({
         url: _spPageContextInfo.webAbsoluteUrl + "/_api/web/ensureuser",
         type: "POST",
@@ -434,9 +449,9 @@ function onStaffListJSON(data) {
     if ($("#itin-main").hasClass("hidden")) {
       $("#itin-main").removeClass("hidden");
       $("#itin-splash").addClass("hidden");
-      var grpOption = $("#grpOption");
-      grpOption.detach();
-      grpOption.appendTo($("#container-grpOption-main"));
+      var acStaff = $("#acStaff");
+      acStaff.detach();
+      acStaff.appendTo($("#container-grpOption-main"));
     }
 
     refreshItins();
@@ -447,14 +462,14 @@ function onStaffListJSON(data) {
   } else if ($("#itin-splash").hasClass("hidden")) {
     $("#itin-splash").removeClass("hidden");
     $("#itin-main").addClass("hidden");
-    var grpOption = $("#grpOption");
-    grpOption.detach();
-    grpOption.appendTo($("#container-grpOption-splash"));
-    $("#itin-splash h3").html("What the... Nobody works here? Try some place else.");
+    var acStaff = $("#acStaff");
+    acStaff.detach();
+    acStaff.appendTo($("#container-grpOption-splash"));
+    $("#itin-splash h3").html("Sorry, can't find anything... Try something else.");
     // Since no results were found and the splash div is displayed, just need
     // to display the nothing found message.
   } else {
-    $("#itin-splash h3").html("What the... Nobody works here? Try some place else.");
+    $("#itin-splash h3").html("Sorry, can't find anything... Try something else.");
   }
 
   enableFields();
@@ -484,101 +499,119 @@ function getDayOfWeek(weekNo, dayNo) {
   return d;
 }
 
+function getTypeaheadTerms() {
+  getDeptTerms();
+  getStaffTerms();
+
+  $('#acStaff .typeahead').typeahead({
+    source: arrTypeahead,
+    updater: function(item) {
+      getStaffList(mapTypeahead[item].name, mapTypeahead[item].type);
+      return item;
+    }
+  });
+}
+
 // Requests department list from the Managed Metadata Store
 function getDeptTerms() {
   this.session = SP.Taxonomy.TaxonomySession.getTaxonomySession(context);
   this.termStore = session.getDefaultSiteCollectionTermStore();
-  this.termsetDept = this.termStore.getTermSet("8ed8c9ea-7052-4c1d-a4d7-b9c10bffea6f");
-  this.terms = termsetDept.get_terms();
+  this.termSet = this.termStore.getTermSet("8ed8c9ea-7052-4c1d-a4d7-b9c10bffea6f");
+  this.terms = termSet.get_terms();
   context.load(session);
   context.load(termStore);
-  context.load(termsetDept);
+  context.load(termSet);
   context.load(terms);
-  context.executeQueryAsync(Function.createDelegate(this, this.onDeptTerms),
+  context.executeQueryAsync(Function.createDelegate(this, function(sender, args) {
+      var termsEnum = terms.getEnumerator();
+      while (termsEnum.moveNext()) {
+        var currentTerm = termsEnum.get_current();
+        var termName = currentTerm.get_name();
+        var item = {
+          "name": termName,
+          "type": "department"
+        }
+        mapTypeahead[termName] = item;
+        arrTypeahead.push(termName);
+      }
+      console.log("Department terms loaded.");
+
+      getOfficeTerms();
+    }),
     Function.createDelegate(this, this.failedListTaxonomySession));
 }
 
-// Requests department list from the Managed Metadata Store
+/**
+  Requests department list from the Managed Metadata Store.
+  Can only be called after the ajax call returns from getDeptTerms() since both
+  functions share the same global variables.
+**/
 function getOfficeTerms() {
-  this.session = SP.Taxonomy.TaxonomySession.getTaxonomySession(context);
-  this.termStore = session.getDefaultSiteCollectionTermStore();
-  this.termsetOffice = this.termStore.getTermSet("1e0e7cef-a4ea-45c1-aaca-6817c9211330");
-  this.terms = termsetOffice.get_terms();
+  this.termSet = this.termStore.getTermSet("1e0e7cef-a4ea-45c1-aaca-6817c9211330");
+  this.terms = termSet.get_terms();
   context.load(session);
   context.load(termStore);
-  context.load(termsetOffice);
+  context.load(termSet);
   context.load(terms);
-  context.executeQueryAsync(Function.createDelegate(this, this.onOfficeTerms),
+  context.executeQueryAsync(Function.createDelegate(this, function(sender, args) {
+      var termsEnum = terms.getEnumerator();
+      while (termsEnum.moveNext()) {
+        var currentTerm = termsEnum.get_current();
+        var termName = currentTerm.get_name();
+        var item = {
+          "name": termName,
+          "type": "office"
+        }
+        mapTypeahead[termName] = item;
+        arrTypeahead.push(termName);
+      }
+      console.log("Office terms loaded.");
+    }),
     Function.createDelegate(this, this.failedListTaxonomySession));
 }
 
-// Populates the Dropdown list with the queried department list.
-function onDeptTerms(sender, args) {
-  var termsEnum = terms.getEnumerator();
-  while (termsEnum.moveNext()) {
-    var currentTerm = termsEnum.get_current();
-    var termName = currentTerm.get_name();
-
-    $("#ulDept").append(
-      $("<li/>").append(
-        $("<a/>", {
-          href: "#",
-          html: termName
-        }).on('click', function() {
-          $('#btnDept').html($(this).html() + '<span class="caret"></span>');
-          $('#btnOffice').html('Office' + '<span class="caret"></span>');
-          if (!$('#btnDept').hasClass("btn-info")) {
-            $('#btnDept').addClass("btn-info");
-            $('#btnOffice').removeClass("btn-info");
-          }
-
-          // Trigger Staff List refresh
-          getStaffList($(this).html(), 'department');
-        })
-      )
-    );
-
-    if (currentTerm.get_termsCount() > 0) {
-      recursiveTerms(currentTerm, 1);
-    }
-  }
-
-  $("#btnDept").removeClass("disabled");
-  getOfficeTerms();
-}
-
-// Populates the Dropdown list with the queried department list.
-function onOfficeTerms(sender, args) {
-  var termsEnum = terms.getEnumerator();
-  while (termsEnum.moveNext()) {
-    var currentTerm = termsEnum.get_current();
-    var termName = currentTerm.get_name();
-
-    $("#ulOffice").append(
-      $("<li/>").append(
-        $("<a/>", {
-          href: "#",
-          html: termName
-        }).on('click', function() {
-          $('#btnOffice').html($(this).html() + '<span class="caret"></span>');
-          $('#btnDept').html('Department' + '<span class="caret"></span>');
-          if (!$('#btnOffice').hasClass("btn-info")) {
-            $('#btnOffice').addClass("btn-info");
-            $('#btnDept').removeClass("btn-info");
-          }
-
-          // Trigger Staff List refresh
-          getStaffList($(this).html(), 'office');
-        })
-      )
-    );
-
-    if (currentTerm.get_termsCount() > 0) {
-      recursiveTerms(currentTerm, 1);
-    }
-  }
-
-  $("#btnOffice").removeClass("disabled");
+// Requests staff list from local People Results
+function getStaffTerms() {
+  var searchTerm = 'JobTitle<>"Support" AND (' +
+    'JobTitle:"a*" JobTitle:"b*" JobTitle:"c*" JobTitle:"d*" JobTitle:"e*"' +
+    'JobTitle:"f*" JobTitle:"g*" JobTitle:"h*" JobTitle:"i*" JobTitle:"j*"' +
+    'JobTitle:"k*" JobTitle:"l*" JobTitle:"m*" JobTitle:"n*" JobTitle:"o*"' +
+    'JobTitle:"p*" JobTitle:"q*" JobTitle:"r*" JobTitle:"s*" JobTitle:"t*"' +
+    'JobTitle:"u*" JobTitle:"v*" JobTitle:"w*" JobTitle:"x*" JobTitle:"y*"' +
+    'JobTitle:"z*" JobTitle:"0*" JobTitle:"1*" JobTitle:"2*" JobTitle:"3*"' +
+    'JobTitle:"4*" JobTitle:"5*" JobTitle:"6*" JobTitle:"7*" JobTitle:"8*"' +
+    'JobTitle:"9*")';
+  var searchUrl = _spPageContextInfo.webAbsoluteUrl +
+    "/_api/search/query?querytext='" + searchTerm +
+    "'&selectproperties='PreferredName,AccountName'&" +
+    "sourceid='B09A7990-05EA-4AF9-81EF-EDFAB16C4E31'&" +
+    "rowlimit='300'";
+  //console.log(searchUrl);
+  $.ajax({
+    url: searchUrl,
+    type: "GET",
+    headers: {
+      "Accept": "application/json; odata=verbose"
+    },
+    success: function(data) {
+      var results = data.d.query.PrimaryQueryResult.RelevantResults.Table.Rows.results;
+      if (results.length > 0) {
+        $.each(results, function(index, result) {
+          var item = {
+            "name": result.Cells.results[2].Value,
+            "AccountName": result.Cells.results[3].Value,
+            "type": "staff"
+          };
+          mapTypeahead[result.Cells.results[2].Value] = item;
+          arrTypeahead.push(result.Cells.results[2].Value);
+        });
+        console.log("Staff terms loaded.");
+      } else {
+        console.log("No staff terms found.");
+      }
+    },
+    error: onQueryFailedJSON
+  });
 }
 
 function recursiveTerms(currentTerm, nestedLoop) {
