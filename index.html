@@ -15,8 +15,11 @@
   <div class="row text-center">
     <h3></h3>
     <div id="container-grpOption-splash" class="col-md-4 col-md-offset-4">
-      <div id="acStaff">
+      <div id="acStaff" class="input-group">
         <input class="typeahead form-control" type="text" placeholder="Type a Department/Office/Person" data-provide="typeahead" autocomplete="off"/>
+        <span class="input-group-btn">
+          <button id="btnClear" type="button" class="btn btn-default" onclick="$('#acStaff input').val('');">Clear</button>
+        </span>
       </div>
     </div>
   </div>
