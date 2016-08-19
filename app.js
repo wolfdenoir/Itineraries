@@ -85,11 +85,12 @@ $(document).ready(function() {
 });
 
 function escapeURL(string) {
-  return String(string).replace(/[&<>'\/]/g, function(s) {
+  return String(string).replace(/[&<>\-'\/]/g, function(s) {
     var entityMap = {
       "&": "%26",
       "<": "%3C",
       ">": "%3E",
+      "-": "\\-",
       "'": '%60',
       "\\": "%5C",
       "[": "%5B",
@@ -381,7 +382,6 @@ function getStaffList(strName, strType) {
       "sourceid='B09A7990-05EA-4AF9-81EF-EDFAB16C4E31'&" +
       "rowlimit='100'";
   }
-
   //console.log(searchUrl);
 
   $.ajax({
