@@ -137,18 +137,22 @@ function refreshItins() {
   // If Edit Mode is on, create <input> controls;
   // Otherwise create <span> for viewing only.
   if ($("#btnEdit").hasClass("btn-primary")) {
-    var am = $("<input/>", {
+    var am = $("<div/>", {
+      "class": "input-group"
+    }).append($("<input/>", {
       maxlength: '10',
       placeholder: "AM",
       "class": "form-control am",
       html: ""
-    });
-    var pm = $("<input/>", {
+    }));
+    var pm = $("<div/>", {
+      "class": "input-group"
+    }).append($("<input/>", {
       maxlength: '10',
       placeholder: "PM",
       "class": "form-control pm",
       html: ""
-    });
+    }));
   } else {
     var am = $("<span/>", {
       "class": "am",
@@ -161,6 +165,37 @@ function refreshItins() {
   }
 
   $(".itin").append(am, pm);
+
+  $("input.am, input.pm").on("focus", function(ev){
+    var btnCopyLeft = $("<span/>", {
+      "class": "input-group-btn"
+    }).append($("<button/>",{
+      type: "button",
+      "class": "btn btn-default",
+      html: '<span class="glyphicon glyphicon-triangle-left" aria-hidden="true"></span>'
+    }));
+    var btnCopyRight = $("<span/>", {
+      "class": "input-group-btn"
+    }).append($("<button/>",{
+      type: "button",
+      "class": "btn btn-default",
+      html: '<span class="glyphicon glyphicon-triangle-right" aria-hidden="true"></span>'
+    }));
+    if($(this).parent().parent().index() == 1) {
+      $(this).parent().append(btnCopyRight);
+    } else if($(this).parent().parent().is(":last-child")) {
+      $(this).parent().prepend(btnCopyLeft);
+    } else {
+      $(this).parent().append(btnCopyRight);
+      $(this).parent().prepend(btnCopyLeft);
+    }
+  });
+
+  $("input.am, input.pm").on("blur", function(ev){
+    console.log($(this).siblings().length);
+    while($(this).siblings().length > 1)
+      $(this).siblings().remove();
+  });
 
   // On any change activity, record change in value.
   $("input.am, input.pm").on("change", function(ev) {
