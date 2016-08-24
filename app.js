@@ -75,6 +75,15 @@ $(document).ready(function() {
       ev.stopPropagation();
     });
 
+  // If the window has been resized, remove CellCopy buttons and
+  // remove static width from the containing div.
+  $(window).resize(function() {
+    while ($(".cellcopy").length > 0) {
+      $(".cellcopy").parent().removeAttr('style');
+      $(".cellcopy").remove();
+    }
+  });
+
   context.load(user);
   context.executeQueryAsync(function() {
     console.log(user);
@@ -166,15 +175,6 @@ function refreshItins() {
 
   $(".itin").append(am, pm);
 
-  // If the window has been resized, remove CellCopy buttons and
-  // remove static width from the containing div.
-  $(window).resize(function() {
-    while ($(".cellcopy").length > 0) {
-      $(".cellcopy").parent().removeAttr('style');
-      $(".cellcopy").remove();
-    }
-  });
-
   $("input.am, input.pm").on("focus", function(ev) {
     // This removes any previously active cellcopy buttons
     while ($(".cellcopy").length > 0) {
@@ -212,17 +212,17 @@ function refreshItins() {
   // On any change activity, record change in value.
   $("input.am, input.pm").on("change", function(ev) {
     $(this).parent().children().addClass("disabled");
-    // Calculate what date it is based on the position of the cell entry in the table.
-    var day = getDayOfWeek($("#weekNo").data("offset"), $(this).parent().parent().children().index($(this).parent()));
+    // Calculate what date it is based on the position of the containing <td> in the table.
+    var day = getDayOfWeek($("#weekNo").data("offset"), $(this).parent().parent().index());
     var time = $(this).attr("class");
-    var staff = $(this).parent().parent().children().eq(0).data("staff");
+    var staff = $(this).parent().parent().siblings(":first").data("staff");
 
-    var itemId = $(this).parent().data("id");
+    var itemId = $(this).parent().parent().data("id");
     var jsonData = {
       "__metadata": {
         "type": "SP.Data.ItinerariesListItem"
       },
-      "StaffId": $(this).parent().siblings(":first").data("id"),
+      "StaffId": $(this).parent().parent().siblings(":first").data("id"),
       "Date": day.toJSON()
     }
 
@@ -232,7 +232,7 @@ function refreshItins() {
       jsonData.PM = this.value;
 
     if (itemId != undefined && itemId != '') {
-      var strSibling = $(this).siblings().eq(0).val();
+      var strSibling = $(this).parent().siblings().children("input").val();
       if ((strSibling == null || strSibling == '') &&
         (this.value == null || this.value == '')) {
         // Delete Record
@@ -297,19 +297,19 @@ function refreshItins() {
 }
 
 function onCreateJSON(data) {
-  $(this).parent().data("id", data.d.ID);
+  $(this).parent().parent().data("id", data.d.ID);
   $(this).parent().children().removeClass("disabled");
   console.log("itemID " + data.d.ID + " created");
 }
 
 function onUpdateJSON(data) {
-  console.log("ItemID " + $(this).parent().data('id') + " updated.");
+  console.log("ItemID " + $(this).parent().parent().data('id') + " updated.");
   $(this).parent().children().removeClass("disabled");
 }
 
 function onDeleteJSON(data) {
-  console.log("ItemID " + $(this).parent().data('id') + " deleted.");
-  $(this).parent().removeData();
+  console.log("ItemID " + $(this).parent().parent().data('id') + " deleted.");
+  $(this).parent().parent().removeData();
   $(this).parent().children().removeClass("disabled");
 }
 
