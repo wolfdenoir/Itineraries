@@ -166,35 +166,47 @@ function refreshItins() {
 
   $(".itin").append(am, pm);
 
-  $("input.am, input.pm").on("focus", function(ev){
+  // If the window has been resized, remove CellCopy buttons and
+  // remove static width from the containing div.
+  $(window).resize(function() {
+    while ($(".cellcopy").length > 0) {
+      $(".cellcopy").parent().removeAttr('style');
+      $(".cellcopy").remove();
+    }
+  });
+
+  $("input.am, input.pm").on("focus", function(ev) {
+    // This removes any previously active cellcopy buttons
+    while ($(".cellcopy").length > 0) {
+      $(".cellcopy").parent().removeAttr('style');
+      $(".cellcopy").remove();
+    }
+
     var btnCopyLeft = $("<span/>", {
-      "class": "input-group-btn"
-    }).append($("<button/>",{
+      "class": "input-group-btn cellcopy"
+    }).append($("<button/>", {
       type: "button",
       "class": "btn btn-default",
       html: '<span class="glyphicon glyphicon-triangle-left" aria-hidden="true"></span>'
     }));
     var btnCopyRight = $("<span/>", {
-      "class": "input-group-btn"
-    }).append($("<button/>",{
+      "class": "input-group-btn cellcopy"
+    }).append($("<button/>", {
       type: "button",
       "class": "btn btn-default",
       html: '<span class="glyphicon glyphicon-triangle-right" aria-hidden="true"></span>'
     }));
-    if($(this).parent().parent().index() == 1) {
+
+    $(this).parent().width($(this).parent().width());
+
+    if ($(this).parent().parent().index() == 1) {
       $(this).parent().append(btnCopyRight);
-    } else if($(this).parent().parent().is(":last-child")) {
+    } else if ($(this).parent().parent().is(":last-child")) {
       $(this).parent().prepend(btnCopyLeft);
     } else {
       $(this).parent().append(btnCopyRight);
       $(this).parent().prepend(btnCopyLeft);
     }
-  });
-
-  $("input.am, input.pm").on("blur", function(ev){
-    console.log($(this).siblings().length);
-    while($(this).siblings().length > 1)
-      $(this).siblings().remove();
   });
 
   // On any change activity, record change in value.
