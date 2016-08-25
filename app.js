@@ -187,6 +187,7 @@ function refreshItins() {
     }).append($("<button/>", {
       type: "button",
       "class": "btn btn-default",
+      tabindex: $("input, button, a").length,
       html: '<span class="glyphicon glyphicon-triangle-left" aria-hidden="true"></span>'
     }));
     var btnCopyRight = $("<span/>", {
@@ -194,6 +195,7 @@ function refreshItins() {
     }).append($("<button/>", {
       type: "button",
       "class": "btn btn-default",
+      tabindex: $("input, button, a").length + 1,
       html: '<span class="glyphicon glyphicon-triangle-right" aria-hidden="true"></span>'
     }));
 
