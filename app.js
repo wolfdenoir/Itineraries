@@ -190,6 +190,11 @@ function refreshItins() {
       tabindex: $("input, button, a").length,
       html: '<span class="glyphicon glyphicon-triangle-left" aria-hidden="true"></span>'
     }));
+
+    btnCopyLeft.on("click", function(ev){
+      copyToCells(this, false);
+    });
+
     var btnCopyRight = $("<span/>", {
       "class": "input-group-btn cellcopy"
     }).append($("<button/>", {
@@ -198,6 +203,10 @@ function refreshItins() {
       tabindex: $("input, button, a").length + 1,
       html: '<span class="glyphicon glyphicon-triangle-right" aria-hidden="true"></span>'
     }));
+
+    btnCopyRight.on("click", function(ev){
+      copyToCells(this);
+    });
 
     $(this).parent().width($(this).parent().width());
 
@@ -212,90 +221,118 @@ function refreshItins() {
   });
 
   // On any change activity, record change in value.
-  $("input.am, input.pm").on("change", function(ev) {
-    $(this).parent().children().addClass("disabled");
-    // Calculate what date it is based on the position of the containing <td> in the table.
-    var day = getDayOfWeek($("#weekNo").data("offset"), $(this).parent().parent().index());
-    var time = $(this).attr("class");
-    var staff = $(this).parent().parent().siblings(":first").data("staff");
+  $("input.am, input.pm").on("change", editItin);
 
-    var itemId = $(this).parent().parent().data("id");
-    var jsonData = {
-      "__metadata": {
-        "type": "SP.Data.ItinerariesListItem"
-      },
-      "StaffId": $(this).parent().parent().siblings(":first").data("id"),
-      "Date": day.toJSON()
-    }
+  getItinsJSON($("#weekNo").data("offset"));
+}
 
-    if ($(this).hasClass('am'))
-      jsonData.AM = this.value;
-    else
-      jsonData.PM = this.value;
+function editItin(ev) {
+  $(this).parent().children().addClass("disabled");
+  // Calculate what date it is based on the position of the containing <td> in the table.
+  var day = getDayOfWeek($("#weekNo").data("offset"), $(this).parent().parent().index());
+  var time = $(this).attr("class");
+  var staff = $(this).parent().parent().siblings(":first").data("staff");
 
-    if (itemId != undefined && itemId != '') {
-      var strSibling = $(this).parent().siblings().children("input").val();
-      if ((strSibling == null || strSibling == '') &&
-        (this.value == null || this.value == '')) {
-        // Delete Record
-        $.ajax({
-          url: _spPageContextInfo.webAbsoluteUrl +
-            "/_api/web/lists/GetByTitle('Itineraries')/items(" + itemId + ")",
-          method: "POST",
-          headers: {
-            "X-RequestDigest": $("#__REQUESTDIGEST").val(),
-            "accept": "application/json;odata=verbose",
-            "content-type": "application/json;odata=verbose",
-            "X-HTTP-Method": "DELETE",
-            "IF-MATCH": "*"
-          },
-          context: $(this),
-          success: onDeleteJSON,
-          error: onQueryFailedJSON
-        });
-      } else {
-        // Update Record
-        $.ajax({
-          url: _spPageContextInfo.webAbsoluteUrl +
-            "/_api/web/lists/GetByTitle('Itineraries')/items(" + itemId + ")",
-          method: "POST",
-          data: JSON.stringify(jsonData),
-          headers: {
-            "X-RequestDigest": $("#__REQUESTDIGEST").val(),
-            "accept": "application/json;odata=verbose",
-            "content-type": "application/json;odata=verbose",
-            "X-HTTP-Method": "MERGE",
-            "IF-MATCH": "*"
-          },
-          context: $(this),
-          success: onUpdateJSON,
-          error: onQueryFailedJSON
-        });
-      }
-    } else if (this.value != null && this.value != '') {
-      // Create Record
+  var itemId = $(this).parent().parent().data("id");
+  var jsonData = {
+    "__metadata": {
+      "type": "SP.Data.ItinerariesListItem"
+    },
+    "StaffId": $(this).parent().parent().siblings(":first").data("id"),
+    "Date": day.toJSON()
+  }
+
+  if ($(this).hasClass('am'))
+    jsonData.AM = this.value;
+  else
+    jsonData.PM = this.value;
+
+  if (itemId != undefined && itemId != '') {
+    var strSibling = $(this).parent().siblings().children("input").val();
+    if ((strSibling == null || strSibling == '') &&
+      (this.value == null || this.value == '')) {
+      // Delete Record
       $.ajax({
         url: _spPageContextInfo.webAbsoluteUrl +
-          "/_api/web/lists/GetByTitle('Itineraries')/items",
+          "/_api/web/lists/GetByTitle('Itineraries')/items(" + itemId + ")",
+        method: "POST",
+        headers: {
+          "X-RequestDigest": $("#__REQUESTDIGEST").val(),
+          "accept": "application/json;odata=verbose",
+          "content-type": "application/json;odata=verbose",
+          "X-HTTP-Method": "DELETE",
+          "IF-MATCH": "*"
+        },
+        context: $(this),
+        success: onDeleteJSON,
+        error: onQueryFailedJSON
+      });
+    } else {
+      // Update Record
+      $.ajax({
+        url: _spPageContextInfo.webAbsoluteUrl +
+          "/_api/web/lists/GetByTitle('Itineraries')/items(" + itemId + ")",
         method: "POST",
         data: JSON.stringify(jsonData),
         headers: {
           "X-RequestDigest": $("#__REQUESTDIGEST").val(),
           "accept": "application/json;odata=verbose",
-          "content-type": "application/json;odata=verbose"
+          "content-type": "application/json;odata=verbose",
+          "X-HTTP-Method": "MERGE",
+          "IF-MATCH": "*"
         },
         context: $(this),
-        success: onCreateJSON,
+        success: onUpdateJSON,
         error: onQueryFailedJSON
       });
-    } else { // Input is empty and there is no existing itemId
-      console.log("Exception: Input is empty and there is no existing itemId.");
     }
+  } else if (this.value != null && this.value != '') {
+    // Create Record
+    $.ajax({
+      url: _spPageContextInfo.webAbsoluteUrl +
+        "/_api/web/lists/GetByTitle('Itineraries')/items",
+      method: "POST",
+      data: JSON.stringify(jsonData),
+      headers: {
+        "X-RequestDigest": $("#__REQUESTDIGEST").val(),
+        "accept": "application/json;odata=verbose",
+        "content-type": "application/json;odata=verbose"
+      },
+      context: $(this),
+      success: onCreateJSON,
+      error: onQueryFailedJSON
+    });
+  } else { // Input is empty and there is no existing itemId
+    console.log("Exception: Input is empty and there is no existing itemId.");
+  }
 
-    ev.stopPropagation();
-  });
+  ev.stopPropagation();
+}
 
-  getItinsJSON($("#weekNo").data("offset"));
+/**
+  Save the current input value across other inputs in the left or right direction.
+**/
+function copyToCells(target, isDirectedRight = true) {
+  if ($(target).parent().parent().index() == 1 && !isDirectedRight ||
+    $(target).parent().parent().is(":last-child") && isDirectedRight) {
+    console.log("Exeption: There are no inputs in the specified direction.");
+    return;
+  }
+
+  var strValue = $(target).siblings("input").val();
+  var claInput = ($(target).siblings("input").hasClass("am")?".am":".pm");
+
+  if(isDirectedRight){
+    $(target).parent().parent().nextAll().each(function(index){
+      $(this).children().children(claInput).val(strValue);
+      $(this).children().children(claInput).trigger("change");
+    });
+  } else {
+    $(target).parent().parent().prevUntil(".staff").each(function(index){
+      $(this).children().children(claInput).val(strValue);
+      $(this).children().children(claInput).trigger("change");
+    });
+  }
 }
 
 function onCreateJSON(data) {
