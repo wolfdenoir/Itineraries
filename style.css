@@ -57,4 +57,12 @@ td.staff img {
   min-width: 2em;
   padding-left: 6px;
   padding-right: 6px;
+  height: 68px;
+}
+
+.flip-icon {
+transform: scaleX(-1);
+-moz-transform: scaleX(-1);
+-webkit-transform: scaleX(-1);
+-ms-transform: scaleX(-1);
 }

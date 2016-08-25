@@ -65,11 +65,11 @@ $(document).ready(function() {
       if ($(this).hasClass("btn-default")) {
         $(this).removeClass("btn-default");
         $(this).addClass("btn-primary");
-        $(this).html('Editing...');
+        $(this).html('<span class="glyphicon glyphicon-pencil" aria-hidden="true"></span>');
       } else {
         $(this).removeClass("btn-primary");
         $(this).addClass("btn-default");
-        $(this).html('Edit');
+        $(this).html('<span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span>');
       }
       refreshItins();
       ev.stopPropagation();
@@ -91,6 +91,8 @@ $(document).ready(function() {
   }, function() {
     alert("Connection Failed. Refresh the page and try again. :(");
   });
+
+  $('[data-toggle="tooltip"]').tooltip();
 });
 
 function escapeURL(string) {
@@ -138,6 +140,7 @@ function refreshItins() {
     var td2 = $("<td/>", {
       "class": "itin"
     });
+
     var tr = $("<tr/>").append(td, td2, td2.clone(), td2.clone(), td2.clone(), td2.clone());
 
     $("#tblItin tbody").append(tr);
@@ -146,22 +149,25 @@ function refreshItins() {
   // If Edit Mode is on, create <input> controls;
   // Otherwise create <span> for viewing only.
   if ($("#btnEdit").hasClass("btn-primary")) {
-    var am = $("<div/>", {
-      "class": "input-group"
-    }).append($("<input/>", {
+    var am = $("<input/>", {
       maxlength: '10',
       placeholder: "AM",
       "class": "form-control am",
       html: ""
-    }));
-    var pm = $("<div/>", {
-      "class": "input-group"
-    }).append($("<input/>", {
+    });
+    var pm = $("<input/>", {
       maxlength: '10',
       placeholder: "PM",
       "class": "form-control pm",
       html: ""
-    }));
+    });
+    var group = $("<div/>", {
+      "class": "input-group"
+    }).append(am, pm);
+    $(".itin").append(group);
+    $(".itin .input-group").each(function(index){
+      $(this).attr("tabindex", $("input, button, a").length + index);
+    });
   } else {
     var am = $("<span/>", {
       "class": "am",
@@ -171,14 +177,22 @@ function refreshItins() {
       "class": "pm",
       html: ""
     });
+    $(".itin").append(am, pm);
   }
 
-  $(".itin").append(am, pm);
+  var lastIndex;
 
-  $("input.am, input.pm").on("focus", function(ev) {
-    // This removes any previously active cellcopy buttons
+  $(".itin .input-group").on("focusin", function(ev) {
+    // Since the event fires every time an element is focused in the div,
+    // We only need to handle the first focusin event.
+    if(parseInt($(this).attr("tabindex")) == lastIndex)
+      return;
+    else
+      lastIndex = parseInt($(this).attr("tabindex"));
+
+    // This removes any previously active cellcopy buttons and static width
     while ($(".cellcopy").length > 0) {
-      $(".cellcopy").parent().removeAttr('style');
+      $(".itin").removeAttr('style');
       $(".cellcopy").remove();
     }
 
@@ -187,6 +201,9 @@ function refreshItins() {
     }).append($("<button/>", {
       type: "button",
       "class": "btn btn-default",
+      "data-toggle": "tooltip",
+      "data-placement": "top",
+      title: "Paste Left",
       tabindex: $("input, button, a").length,
       html: '<span class="glyphicon glyphicon-triangle-left" aria-hidden="true"></span>'
     }));
@@ -200,6 +217,9 @@ function refreshItins() {
     }).append($("<button/>", {
       type: "button",
       "class": "btn btn-default",
+      "data-toggle": "tooltip",
+      "data-placement": "top",
+      title: "Paste Right",
       tabindex: $("input, button, a").length + 1,
       html: '<span class="glyphicon glyphicon-triangle-right" aria-hidden="true"></span>'
     }));
@@ -210,14 +230,17 @@ function refreshItins() {
 
     $(this).parent().width($(this).parent().width());
 
-    if ($(this).parent().parent().index() == 1) {
-      $(this).parent().append(btnCopyRight);
-    } else if ($(this).parent().parent().is(":last-child")) {
-      $(this).parent().prepend(btnCopyLeft);
+    if ($(this).parent().index() == 1) {
+      $(this).append(btnCopyRight);
+    } else if ($(this).parent().is(":last-child")) {
+      $(this).prepend(btnCopyLeft);
     } else {
-      $(this).parent().append(btnCopyRight);
-      $(this).parent().prepend(btnCopyLeft);
+      $(this).append(btnCopyRight);
+      $(this).prepend(btnCopyLeft);
     }
+
+    $('[data-toggle="tooltip"]').tooltip();
+    ev.stopPropagation();
   });
 
   // On any change activity, record change in value.
@@ -242,13 +265,16 @@ function editItin(ev) {
     "Date": day.toJSON()
   }
 
-  if ($(this).hasClass('am'))
+  var strSibling = $(this).siblings("input").val();
+  if ($(this).hasClass('am')){
     jsonData.AM = this.value;
-  else
+    jsonData.PM = strSibling;
+  }else{
     jsonData.PM = this.value;
+    jsonData.AM = strSibling;
+  }
 
   if (itemId != undefined && itemId != '') {
-    var strSibling = $(this).parent().siblings().children("input").val();
     if ((strSibling == null || strSibling == '') &&
       (this.value == null || this.value == '')) {
       // Delete Record
@@ -303,7 +329,7 @@ function editItin(ev) {
       error: onQueryFailedJSON
     });
   } else { // Input is empty and there is no existing itemId
-    console.log("Exception: Input is empty and there is no existing itemId.");
+    // do nothing
   }
 
   ev.stopPropagation();
@@ -319,18 +345,20 @@ function copyToCells(target, isDirectedRight = true) {
     return;
   }
 
-  var strValue = $(target).siblings("input").val();
-  var claInput = ($(target).siblings("input").hasClass("am")?".am":".pm");
+  var am = $(target).siblings(".am").val();
+  var pm = $(target).siblings(".pm").val();
 
   if(isDirectedRight){
-    $(target).parent().parent().nextAll().each(function(index){
-      $(this).children().children(claInput).val(strValue);
-      $(this).children().children(claInput).trigger("change");
+    $(target).parent().parent().nextAll().children().each(function(index){
+      $(this).children(".am").val(am);
+      $(this).children(".pm").val(pm);
+      $(this).children(".am").trigger("change");
     });
   } else {
-    $(target).parent().parent().prevUntil(".staff").each(function(index){
-      $(this).children().children(claInput).val(strValue);
-      $(this).children().children(claInput).trigger("change");
+    $(target).parent().parent().prevUntil(".staff").children().each(function(index){
+      $(this).children(".am").val(am);
+      $(this).children(".pm").val(pm);
+      $(this).children(".am").trigger("change");
     });
   }
 }
