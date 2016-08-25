@@ -65,15 +65,24 @@ $(document).ready(function() {
       if ($(this).hasClass("btn-default")) {
         $(this).removeClass("btn-default");
         $(this).addClass("btn-primary");
-        $(this).html('Editing...');
+        $(this).html('<span class="glyphicon glyphicon-pencil" aria-hidden="true"></span>');
       } else {
         $(this).removeClass("btn-primary");
         $(this).addClass("btn-default");
-        $(this).html('Edit');
+        $(this).html('<span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span>');
       }
       refreshItins();
       ev.stopPropagation();
     });
+
+  // If the window has been resized, remove CellCopy buttons and
+  // remove static width from the containing div.
+  $(window).resize(function() {
+    while ($(".cellcopy").length > 0) {
+      $(".cellcopy").parent().removeAttr('style');
+      $(".cellcopy").remove();
+    }
+  });
 
   context.load(user);
   context.executeQueryAsync(function() {
@@ -82,6 +91,8 @@ $(document).ready(function() {
   }, function() {
     alert("Connection Failed. Refresh the page and try again. :(");
   });
+
+  $('[data-toggle="tooltip"]').tooltip();
 });
 
 function escapeURL(string) {
@@ -129,6 +140,7 @@ function refreshItins() {
     var td2 = $("<td/>", {
       "class": "itin"
     });
+
     var tr = $("<tr/>").append(td, td2, td2.clone(), td2.clone(), td2.clone(), td2.clone());
 
     $("#tblItin tbody").append(tr);
@@ -149,6 +161,13 @@ function refreshItins() {
       "class": "form-control pm",
       html: ""
     });
+    var group = $("<div/>", {
+      "class": "input-group"
+    }).append(am, pm);
+    $(".itin").append(group);
+    $(".itin .input-group").each(function(index){
+      $(this).attr("tabindex", $("input, button, a").length + index);
+    });
   } else {
     var am = $("<span/>", {
       "class": "am",
@@ -158,111 +177,206 @@ function refreshItins() {
       "class": "pm",
       html: ""
     });
+    $(".itin").append(am, pm);
   }
 
-  $(".itin").append(am, pm);
+  var lastIndex;
 
-  // On any change activity, record change in value.
-  $("input.am, input.pm").on("change", function(ev) {
-    $(this).parent().children().addClass("disabled");
-    // Calculate what date it is based on the position of the cell entry in the table.
-    var day = getDayOfWeek($("#weekNo").data("offset"), $(this).parent().parent().children().index($(this).parent()));
-    var time = $(this).attr("class");
-    var staff = $(this).parent().parent().children().eq(0).data("staff");
+  $(".itin .input-group").on("focusin", function(ev) {
+    // Since the event fires every time an element is focused in the div,
+    // We only need to handle the first focusin event.
+    if(parseInt($(this).attr("tabindex")) == lastIndex)
+      return;
+    else
+      lastIndex = parseInt($(this).attr("tabindex"));
 
-    var itemId = $(this).parent().data("id");
-    var jsonData = {
-      "__metadata": {
-        "type": "SP.Data.ItinerariesListItem"
-      },
-      "StaffId": $(this).parent().siblings(":first").data("id"),
-      "Date": day.toJSON()
+    // This removes any previously active cellcopy buttons and static width
+    while ($(".cellcopy").length > 0) {
+      $(".itin").removeAttr('style');
+      $(".cellcopy").remove();
     }
 
-    if ($(this).hasClass('am'))
-      jsonData.AM = this.value;
-    else
-      jsonData.PM = this.value;
+    var btnCopyLeft = $("<span/>", {
+      "class": "input-group-btn cellcopy"
+    }).append($("<button/>", {
+      type: "button",
+      "class": "btn btn-default",
+      "data-toggle": "tooltip",
+      "data-placement": "top",
+      title: "Paste Left",
+      tabindex: $("input, button, a").length,
+      html: '<span class="glyphicon glyphicon-triangle-left" aria-hidden="true"></span>'
+    }));
 
-    if (itemId != undefined && itemId != '') {
-      var strSibling = $(this).siblings().eq(0).val();
-      if ((strSibling == null || strSibling == '') &&
-        (this.value == null || this.value == '')) {
-        // Delete Record
-        $.ajax({
-          url: _spPageContextInfo.webAbsoluteUrl +
-            "/_api/web/lists/GetByTitle('Itineraries')/items(" + itemId + ")",
-          method: "POST",
-          headers: {
-            "X-RequestDigest": $("#__REQUESTDIGEST").val(),
-            "accept": "application/json;odata=verbose",
-            "content-type": "application/json;odata=verbose",
-            "X-HTTP-Method": "DELETE",
-            "IF-MATCH": "*"
-          },
-          context: $(this),
-          success: onDeleteJSON,
-          error: onQueryFailedJSON
-        });
-      } else {
-        // Update Record
-        $.ajax({
-          url: _spPageContextInfo.webAbsoluteUrl +
-            "/_api/web/lists/GetByTitle('Itineraries')/items(" + itemId + ")",
-          method: "POST",
-          data: JSON.stringify(jsonData),
-          headers: {
-            "X-RequestDigest": $("#__REQUESTDIGEST").val(),
-            "accept": "application/json;odata=verbose",
-            "content-type": "application/json;odata=verbose",
-            "X-HTTP-Method": "MERGE",
-            "IF-MATCH": "*"
-          },
-          context: $(this),
-          success: onUpdateJSON,
-          error: onQueryFailedJSON
-        });
-      }
-    } else if (this.value != null && this.value != '') {
-      // Create Record
+    btnCopyLeft.on("click", function(ev){
+      copyToCells(this, false);
+    });
+
+    var btnCopyRight = $("<span/>", {
+      "class": "input-group-btn cellcopy"
+    }).append($("<button/>", {
+      type: "button",
+      "class": "btn btn-default",
+      "data-toggle": "tooltip",
+      "data-placement": "top",
+      title: "Paste Right",
+      tabindex: $("input, button, a").length + 1,
+      html: '<span class="glyphicon glyphicon-triangle-right" aria-hidden="true"></span>'
+    }));
+
+    btnCopyRight.on("click", function(ev){
+      copyToCells(this);
+    });
+
+    $(this).parent().width($(this).parent().width());
+
+    if ($(this).parent().index() == 1) {
+      $(this).append(btnCopyRight);
+    } else if ($(this).parent().is(":last-child")) {
+      $(this).prepend(btnCopyLeft);
+    } else {
+      $(this).append(btnCopyRight);
+      $(this).prepend(btnCopyLeft);
+    }
+
+    $('[data-toggle="tooltip"]').tooltip();
+    ev.stopPropagation();
+  });
+
+  // On any change activity, record change in value.
+  $("input.am, input.pm").on("change", editItin);
+
+  getItinsJSON($("#weekNo").data("offset"));
+}
+
+function editItin(ev) {
+  $(this).parent().children().addClass("disabled");
+  // Calculate what date it is based on the position of the containing <td> in the table.
+  var day = getDayOfWeek($("#weekNo").data("offset"), $(this).parent().parent().index());
+  var time = $(this).attr("class");
+  var staff = $(this).parent().parent().siblings(":first").data("staff");
+
+  var itemId = $(this).parent().parent().data("id");
+  var jsonData = {
+    "__metadata": {
+      "type": "SP.Data.ItinerariesListItem"
+    },
+    "StaffId": $(this).parent().parent().siblings(":first").data("id"),
+    "Date": day.toJSON()
+  }
+
+  var strSibling = $(this).siblings("input").val();
+  if ($(this).hasClass('am')){
+    jsonData.AM = this.value;
+    jsonData.PM = strSibling;
+  }else{
+    jsonData.PM = this.value;
+    jsonData.AM = strSibling;
+  }
+
+  if (itemId != undefined && itemId != '') {
+    if ((strSibling == null || strSibling == '') &&
+      (this.value == null || this.value == '')) {
+      // Delete Record
       $.ajax({
         url: _spPageContextInfo.webAbsoluteUrl +
-          "/_api/web/lists/GetByTitle('Itineraries')/items",
+          "/_api/web/lists/GetByTitle('Itineraries')/items(" + itemId + ")",
+        method: "POST",
+        headers: {
+          "X-RequestDigest": $("#__REQUESTDIGEST").val(),
+          "accept": "application/json;odata=verbose",
+          "content-type": "application/json;odata=verbose",
+          "X-HTTP-Method": "DELETE",
+          "IF-MATCH": "*"
+        },
+        context: $(this),
+        success: onDeleteJSON,
+        error: onQueryFailedJSON
+      });
+    } else {
+      // Update Record
+      $.ajax({
+        url: _spPageContextInfo.webAbsoluteUrl +
+          "/_api/web/lists/GetByTitle('Itineraries')/items(" + itemId + ")",
         method: "POST",
         data: JSON.stringify(jsonData),
         headers: {
           "X-RequestDigest": $("#__REQUESTDIGEST").val(),
           "accept": "application/json;odata=verbose",
-          "content-type": "application/json;odata=verbose"
+          "content-type": "application/json;odata=verbose",
+          "X-HTTP-Method": "MERGE",
+          "IF-MATCH": "*"
         },
         context: $(this),
-        success: onCreateJSON,
+        success: onUpdateJSON,
         error: onQueryFailedJSON
       });
-    } else { // Input is empty and there is no existing itemId
-      console.log("Exception: Input is empty and there is no existing itemId.");
     }
+  } else if (this.value != null && this.value != '') {
+    // Create Record
+    $.ajax({
+      url: _spPageContextInfo.webAbsoluteUrl +
+        "/_api/web/lists/GetByTitle('Itineraries')/items",
+      method: "POST",
+      data: JSON.stringify(jsonData),
+      headers: {
+        "X-RequestDigest": $("#__REQUESTDIGEST").val(),
+        "accept": "application/json;odata=verbose",
+        "content-type": "application/json;odata=verbose"
+      },
+      context: $(this),
+      success: onCreateJSON,
+      error: onQueryFailedJSON
+    });
+  } else { // Input is empty and there is no existing itemId
+    // do nothing
+  }
 
-    ev.stopPropagation();
-  });
+  ev.stopPropagation();
+}
 
-  getItinsJSON($("#weekNo").data("offset"));
+/**
+  Save the current input value across other inputs in the left or right direction.
+**/
+function copyToCells(target, isDirectedRight = true) {
+  if ($(target).parent().parent().index() == 1 && !isDirectedRight ||
+    $(target).parent().parent().is(":last-child") && isDirectedRight) {
+    console.log("Exeption: There are no inputs in the specified direction.");
+    return;
+  }
+
+  var am = $(target).siblings(".am").val();
+  var pm = $(target).siblings(".pm").val();
+
+  if(isDirectedRight){
+    $(target).parent().parent().nextAll().children().each(function(index){
+      $(this).children(".am").val(am);
+      $(this).children(".pm").val(pm);
+      $(this).children(".am").trigger("change");
+    });
+  } else {
+    $(target).parent().parent().prevUntil(".staff").children().each(function(index){
+      $(this).children(".am").val(am);
+      $(this).children(".pm").val(pm);
+      $(this).children(".am").trigger("change");
+    });
+  }
 }
 
 function onCreateJSON(data) {
-  $(this).parent().data("id", data.d.ID);
+  $(this).parent().parent().data("id", data.d.ID);
   $(this).parent().children().removeClass("disabled");
   console.log("itemID " + data.d.ID + " created");
 }
 
 function onUpdateJSON(data) {
-  console.log("ItemID " + $(this).parent().data('id') + " updated.");
+  console.log("ItemID " + $(this).parent().parent().data('id') + " updated.");
   $(this).parent().children().removeClass("disabled");
 }
 
 function onDeleteJSON(data) {
-  console.log("ItemID " + $(this).parent().data('id') + " deleted.");
-  $(this).parent().removeData();
+  console.log("ItemID " + $(this).parent().parent().data('id') + " deleted.");
+  $(this).parent().parent().removeData();
   $(this).parent().children().removeClass("disabled");
 }
 
