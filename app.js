@@ -203,7 +203,7 @@ function refreshItins() {
       "class": "btn btn-default",
       "data-toggle": "tooltip",
       "data-placement": "top",
-      title: "Paste Left",
+      title: "Flush Left",
       tabindex: $("input, button, a").length,
       html: '<span class="glyphicon glyphicon-triangle-left" aria-hidden="true"></span>'
     }));
@@ -219,7 +219,7 @@ function refreshItins() {
       "class": "btn btn-default",
       "data-toggle": "tooltip",
       "data-placement": "top",
-      title: "Paste Right",
+      title: "Flush Right",
       tabindex: $("input, button, a").length + 1,
       html: '<span class="glyphicon glyphicon-triangle-right" aria-hidden="true"></span>'
     }));
@@ -338,7 +338,8 @@ function editItin(ev) {
 /**
   Save the current input value across other inputs in the left or right direction.
 **/
-function copyToCells(target, isDirectedRight = true) {
+function copyToCells(target, isDirectedRight) {
+  var isDirectedRight = isDirectedRight || true;
   if ($(target).parent().parent().index() == 1 && !isDirectedRight ||
     $(target).parent().parent().is(":last-child") && isDirectedRight) {
     console.log("Exeption: There are no inputs in the specified direction.");
