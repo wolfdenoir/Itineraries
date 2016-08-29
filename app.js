@@ -78,8 +78,8 @@ $(document).ready(function() {
   // If the window has been resized, remove CellCopy buttons and
   // remove static width from the containing div.
   $(window).resize(function() {
-    while ($(".cellcopy").length > 0) {
-      $(".cellcopy").parent().removeAttr('style');
+    if($(".cellcopy").length > 0) {
+      $(".itin").removeAttr('style');
       $(".cellcopy").remove();
     }
   });
