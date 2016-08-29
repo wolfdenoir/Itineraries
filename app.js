@@ -65,11 +65,11 @@ $(document).ready(function() {
       if ($(this).hasClass("btn-default")) {
         $(this).removeClass("btn-default");
         $(this).addClass("btn-primary");
-        $(this).html('<span class="glyphicon glyphicon-pencil" aria-hidden="true"></span>');
+        $(this).html('<span class="glyphicon glyphicon-pencil" aria-hidden="true"></span>&nbsp;Editing');
       } else {
         $(this).removeClass("btn-primary");
         $(this).addClass("btn-default");
-        $(this).html('<span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span>');
+        $(this).html('<span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span>&nbsp;Viewing');
       }
       refreshItins();
       ev.stopPropagation();
