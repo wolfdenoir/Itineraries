@@ -339,7 +339,7 @@ function editItin(ev) {
   Save the current input value across other inputs in the left or right direction.
 **/
 function copyToCells(target, isDirectedRight) {
-  var isDirectedRight = isDirectedRight || true;
+  var isDirectedRight = (isDirectedRight === null || isDirectedRight === undefined)?true:isDirectedRight;
   if ($(target).parent().parent().index() == 1 && !isDirectedRight ||
     $(target).parent().parent().is(":last-child") && isDirectedRight) {
     console.log("Exeption: There are no inputs in the specified direction.");
