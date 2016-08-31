@@ -1,11 +1,43 @@
 # Itineraries
-Javascript App for updating People Itineraries in a SharePoint list. Originally created for the use of staff at British Columbia Goverment and Service Employee's Union.
+Javascript App for updating People Itineraries in a SharePoint list. Originally created for the use of staff at British Columbia Government and Service Employee's Union.
 
-The list structure is as follows:
+## Requirements
+The app uses the following libraries and their stylesheets:
+* JQuery
+* Bootstrap 3
+* Bootstrap 3 Typeahead
+* SP.runtime.js in SharePoint 2013
+* SP.js in SharePoint 2013
+* SP.taxonomy.js in SharePoint 2013
 
-Staff: People field
-Date: Date field
-AM: Text field limited to 10 characters
-PM: Text field limited to 10 characters
+It also interacts with the following SharePoint list/term stores to perform its functions:
+* Itineraries - SharePoint list which houses all itinerary data. The list structure is as follows:
+```
+Staff: People field; Required
+Date: Date field; Required
+AM: Text field; Required; Limited to 10 characters
+PM: Text field; Required; Limited to 10 characters
+```
+* Department - Managed Metadata Term Store which stores all department names
+* Office - Managed Metadata Term Store which stores all office names
+* Local People Results - SharePoint people results in the SiteCollection
 
-Each record represents a staff's itinerary of a day, with AM representing the Morning schedule and PM representing afternoon schedule. The design is that each input should only have brief information about the staff's whereabouts so it is easy to read at a glance.
+## Getting Started
+
+* Place index.html, style.css, app.js in one directory within the SharePoint SiteCollection
+* Ensure the SharePoint lists/Term Stores are available.
+* Insert a Content Editor WebPart into a SharePoint Page with the link to the index.html file
+
+## Built With
+
+* Atom editor
+* Bootstrap 3
+* SharePoint 2013
+
+## Authors
+
+* **Ray Juei-Fu Liu** - [WolfDeNoir](https://github.com/wolfdenoir)
+
+## License
+
+This project is licensed under the GNU GENERAL PUBLIC LICENSE - see the [LICENSE](LICENSE) file for details
