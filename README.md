@@ -1,5 +1,5 @@
 # Itineraries
-Javascript App for updating People Itineraries in a SharePoint list. Originally created for the use of staff at British Columbia Government and Service Employee's Union.
+Javascript/SharePoint App for updating People Itineraries in a SharePoint list. Originally created for the use of staff at British Columbia Government and Service Employee's Union.
 
 ## Requirements
 The app uses the following libraries and their stylesheets:
@@ -24,9 +24,10 @@ PM: Text field; Required; Limited to 10 characters
 
 ## Getting Started
 
-* Place index.html, style.css, app.js in one directory within the SharePoint SiteCollection
-* Ensure the SharePoint lists/Term Stores are available.
-* Insert a Content Editor WebPart into a SharePoint Page with the link to the index.html file
+* Place index.html, style.css, app.js in one directory within the SharePoint SiteCollection.
+* Prepare your list and term stores as per the required specifications.
+* Update the list name and term store hash ids to match those in your SharePoint site.
+* Insert a Content Editor WebPart into a SharePoint Page with the link to the index.html file.
 
 ## Built With
 

@@ -1,3 +1,7 @@
+var _ITIN_LIST_NAME = 'Itineraries';
+var _DEPT_TERMSTORE_ID = '8ed8c9ea-7052-4c1d-a4d7-b9c10bffea6f';
+var _OFFICE_TERMSTORE_ID = '1e0e7cef-a4ea-45c1-aaca-6817c9211330';
+var _LOCAL_PEOPLE_RESULT_ID = 'B09A7990-05EA-4AF9-81EF-EDFAB16C4E31';
 var arrStaff = [];
 var arrTypeahead = [];
 var mapTypeahead = {};
@@ -275,12 +279,13 @@ function editItin(ev) {
   }
 
   if (itemId != undefined && itemId != '') {
+    var listURL = _spPageContextInfo.webAbsoluteUrl +
+      "/_api/web/lists/GetByTitle('" + _ITIN_LIST_NAME + "')/items";
     if ((strSibling == null || strSibling == '') &&
       (this.value == null || this.value == '')) {
       // Delete Record
       $.ajax({
-        url: _spPageContextInfo.webAbsoluteUrl +
-          "/_api/web/lists/GetByTitle('Itineraries')/items(" + itemId + ")",
+        url: listURL + "(" + itemId + ")",
         method: "POST",
         headers: {
           "X-RequestDigest": $("#__REQUESTDIGEST").val(),
@@ -296,8 +301,7 @@ function editItin(ev) {
     } else {
       // Update Record
       $.ajax({
-        url: _spPageContextInfo.webAbsoluteUrl +
-          "/_api/web/lists/GetByTitle('Itineraries')/items(" + itemId + ")",
+        url: listURL + "(" + itemId + ")",
         method: "POST",
         data: JSON.stringify(jsonData),
         headers: {
@@ -315,8 +319,7 @@ function editItin(ev) {
   } else if (this.value != null && this.value != '') {
     // Create Record
     $.ajax({
-      url: _spPageContextInfo.webAbsoluteUrl +
-        "/_api/web/lists/GetByTitle('Itineraries')/items",
+      url: listURL,
       method: "POST",
       data: JSON.stringify(jsonData),
       headers: {
@@ -411,7 +414,7 @@ function getItinsJSON(offset) {
   }
 
   var searchUrl = _spPageContextInfo.webAbsoluteUrl +
-    "/_api/web/lists/GetByTitle('Itineraries')/items?" +
+    "/_api/web/lists/GetByTitle('" + _ITIN_LIST_NAME + "')/items?" +
     "$select=ID,StaffId,Staff/Title,Date,AM,PM&$expand=Staff&" +
     clauseStaff + ") and Date ge DateTime'" + getDayOfWeek(offset, 1).toJSON().slice(0, 11) +
     "00:00:00.000Z' and Date le DateTime'" + getDayOfWeek(offset, 5).toJSON().slice(0, 11) +
@@ -631,7 +634,7 @@ function getTypeaheadTerms() {
 function getDeptTerms() {
   this.session = SP.Taxonomy.TaxonomySession.getTaxonomySession(context);
   this.termStore = session.getDefaultSiteCollectionTermStore();
-  this.termSet = this.termStore.getTermSet("8ed8c9ea-7052-4c1d-a4d7-b9c10bffea6f");
+  this.termSet = this.termStore.getTermSet(_DEPT_TERMSTORE_ID);
   this.terms = termSet.get_terms();
   context.load(session);
   context.load(termStore);
@@ -662,7 +665,7 @@ function getDeptTerms() {
   functions share the same global variables.
 **/
 function getOfficeTerms() {
-  this.termSet = this.termStore.getTermSet("1e0e7cef-a4ea-45c1-aaca-6817c9211330");
+  this.termSet = this.termStore.getTermSet(_OFFICE_TERMSTORE_ID);
   this.terms = termSet.get_terms();
   context.load(session);
   context.load(termStore);
@@ -699,7 +702,7 @@ function getStaffTerms() {
   var searchUrl = _spPageContextInfo.webAbsoluteUrl +
     "/_api/search/query?querytext='" + searchTerm +
     "'&selectproperties='PreferredName,AccountName'&" +
-    "sourceid='B09A7990-05EA-4AF9-81EF-EDFAB16C4E31'&" +
+    "sourceid='" + _LOCAL_PEOPLE_RESULT_ID + "'&" +
     "rowlimit='300'";
   //console.log(searchUrl);
   $.ajax({
@@ -727,34 +730,4 @@ function getStaffTerms() {
     },
     error: onQueryFailedJSON
   });
-}
-
-function recursiveTerms(currentTerm, nestedLoop) {
-  // Loop count for formatting purpose.
-  var loop = nestedLoop + 1;
-  // Get Term child terms
-  var terms = currentTerm.get_terms();
-  context.load(terms);
-  context.executeQueryAsync(
-    function() {
-      var termsEnum = terms.getEnumerator();
-      while (termsEnum.moveNext()) {
-        var newCurrentTerm = termsEnum.get_current();
-        var termName = newCurrentTerm.get_name();
-        termId = newCurrentTerm.get_id();
-        // Tab Out format.
-        for (var i = 0; i < loop; i++) {
-          termsList += "\t";
-        }
-        termsList += termName + ": " + termId;
-        // Check if term has child terms.
-        if (currentTerm.get_termsCount() > 0) {
-          // Term has sub terms.
-          recursiveTerms(newCurrentTerm, loop);
-        }
-      }
-    },
-    function() {
-      // failure to load terms
-    });
 }
