@@ -24,7 +24,7 @@ PM: Text field; Required; Limited to 10 characters
 
 ## Getting Started
 
-* Place index.html, style.css, app.js in one directory within the SharePoint SiteCollection.
+* Place index.html, style.min.css, app.min.js in one directory within the SharePoint SiteCollection.
 * Prepare your list and term stores as per the required specifications.
 * Update the list name and term store hash ids to match those in your SharePoint site.
 * Insert a Content Editor WebPart into a SharePoint Page with the link to the index.html file.
