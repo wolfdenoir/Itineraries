@@ -1,6 +1,6 @@
 var _ITIN_LIST_NAME = 'Itineraries';
 var _DEPT_TERMSTORE_ID = '8ed8c9ea-7052-4c1d-a4d7-b9c10bffea6f';
-var _OFFICE_TERMSTORE_ID = '1e0e7cef-a4ea-45c1-aaca-6817c9211330';
+var _OFFICE_TERMSTORE_ID = '3588dfe5-e02f-4631-b768-ce6137ebbb61';
 var _LOCAL_PEOPLE_RESULT_ID = 'B09A7990-05EA-4AF9-81EF-EDFAB16C4E31';
 var arrStaff = [];
 var arrTypeahead = [];
@@ -61,7 +61,7 @@ $(document).ready(function() {
       if ($(ev.currentTarget).hasClass("disabled"))
         return;
 
-      if (!isReadyForEdit) {
+      if (!isLastItem) {
         alert("Hold your horses dear! Data is still being crunched... Try again soon!");
         return;
       }
@@ -82,7 +82,7 @@ $(document).ready(function() {
   // If the window has been resized, remove CellCopy buttons and
   // remove static width from the containing div.
   $(window).resize(function() {
-    if($(".cellcopy").length > 0) {
+    if ($(".cellcopy").length > 0) {
       $(".itin").removeAttr('style');
       $(".cellcopy").remove();
     }
@@ -105,8 +105,8 @@ function escapeURL(string) {
       "&": "%26",
       "<": "%3C",
       ">": "%3E",
-      "-": "\\-",
-      "'": '%60',
+      "-": "-",
+      "'": "''",
       "\\": "%5C",
       "[": "%5B",
       "]": "%5D"
@@ -154,13 +154,13 @@ function refreshItins() {
   // Otherwise create <span> for viewing only.
   if ($("#btnEdit").hasClass("btn-primary")) {
     var am = $("<input/>", {
-      maxlength: '10',
+      maxlength: '20',
       placeholder: "AM",
       "class": "form-control am",
       html: ""
     });
     var pm = $("<input/>", {
-      maxlength: '10',
+      maxlength: '20',
       placeholder: "PM",
       "class": "form-control pm",
       html: ""
@@ -169,7 +169,7 @@ function refreshItins() {
       "class": "input-group"
     }).append(am, pm);
     $(".itin").append(group);
-    $(".itin .input-group").each(function(index){
+    $(".itin .input-group").each(function(index) {
       $(this).attr("tabindex", $("input, button, a").length + index);
     });
   } else {
@@ -189,7 +189,7 @@ function refreshItins() {
   $(".itin .input-group").on("focusin", function(ev) {
     // Since the event fires every time an element is focused in the div,
     // We only need to handle the first focusin event.
-    if(parseInt($(this).attr("tabindex")) == lastIndex)
+    if (parseInt($(this).attr("tabindex")) == lastIndex)
       return;
     else
       lastIndex = parseInt($(this).attr("tabindex"));
@@ -207,12 +207,12 @@ function refreshItins() {
       "class": "btn btn-default",
       "data-toggle": "tooltip",
       "data-placement": "top",
-      title: "Flush Left",
+      title: "Paste Left",
       tabindex: $("input, button, a").length,
       html: '<span class="glyphicon glyphicon-triangle-left" aria-hidden="true"></span>'
     }));
 
-    btnCopyLeft.on("click", function(ev){
+    btnCopyLeft.on("click", function(ev) {
       copyToCells(this, false);
     });
 
@@ -223,12 +223,12 @@ function refreshItins() {
       "class": "btn btn-default",
       "data-toggle": "tooltip",
       "data-placement": "top",
-      title: "Flush Right",
+      title: "Paste Right",
       tabindex: $("input, button, a").length + 1,
       html: '<span class="glyphicon glyphicon-triangle-right" aria-hidden="true"></span>'
     }));
 
-    btnCopyRight.on("click", function(ev){
+    btnCopyRight.on("click", function(ev) {
       copyToCells(this);
     });
 
@@ -270,17 +270,17 @@ function editItin(ev) {
   }
 
   var strSibling = $(this).siblings("input").val();
-  if ($(this).hasClass('am')){
+  if ($(this).hasClass('am')) {
     jsonData.AM = this.value;
     jsonData.PM = strSibling;
-  }else{
+  } else {
     jsonData.PM = this.value;
     jsonData.AM = strSibling;
   }
 
+  var listURL = _spPageContextInfo.webAbsoluteUrl +
+    "/_api/web/lists/GetByTitle('" + _ITIN_LIST_NAME + "')/items";
   if (itemId != undefined && itemId != '') {
-    var listURL = _spPageContextInfo.webAbsoluteUrl +
-      "/_api/web/lists/GetByTitle('" + _ITIN_LIST_NAME + "')/items";
     if ((strSibling == null || strSibling == '') &&
       (this.value == null || this.value == '')) {
       // Delete Record
@@ -333,6 +333,7 @@ function editItin(ev) {
     });
   } else { // Input is empty and there is no existing itemId
     // do nothing
+    console.log("Warning: Input is empty and there is no existing itemId.");
   }
 
   ev.stopPropagation();
@@ -342,7 +343,7 @@ function editItin(ev) {
   Save the current input value across other inputs in the left or right direction.
 **/
 function copyToCells(target, isDirectedRight) {
-  var isDirectedRight = (isDirectedRight === null || isDirectedRight === undefined)?true:isDirectedRight;
+  var isDirectedRight = (isDirectedRight === null || isDirectedRight === undefined) ? true : isDirectedRight;
   if ($(target).parent().parent().index() == 1 && !isDirectedRight ||
     $(target).parent().parent().is(":last-child") && isDirectedRight) {
     console.log("Exeption: There are no inputs in the specified direction.");
@@ -352,14 +353,14 @@ function copyToCells(target, isDirectedRight) {
   var am = $(target).siblings(".am").val();
   var pm = $(target).siblings(".pm").val();
 
-  if(isDirectedRight){
-    $(target).parent().parent().nextAll().children().each(function(index){
+  if (isDirectedRight) {
+    $(target).parent().parent().nextAll().children().each(function(index) {
       $(this).children(".am").val(am);
       $(this).children(".pm").val(pm);
       $(this).children(".am").trigger("change");
     });
   } else {
-    $(target).parent().parent().prevUntil(".staff").children().each(function(index){
+    $(target).parent().parent().prevUntil(".staff").children().each(function(index) {
       $(this).children(".am").val(am);
       $(this).children(".pm").val(pm);
       $(this).children(".am").trigger("change");
@@ -418,7 +419,7 @@ function getItinsJSON(offset) {
     "$select=ID,StaffId,Staff/Title,Date,AM,PM&$expand=Staff&" +
     clauseStaff + ") and Date ge DateTime'" + getDayOfWeek(offset, 1).toJSON().slice(0, 11) +
     "00:00:00.000Z' and Date le DateTime'" + getDayOfWeek(offset, 5).toJSON().slice(0, 11) +
-    "23:59:59.999Z'&$orderby=Staff desc";
+    "23:59:59.999Z'&$orderby=Staff desc&$top=200";
 
   //console.log(searchUrl);
   $.ajax({
@@ -434,20 +435,22 @@ function getItinsJSON(offset) {
 
 // Populate the Itin table with the queried data
 function onItinsJSON(data) {
-  //console.log(data);
   var results = data.d.results;
   if (results.length > 0) {
+    //console.log(results);
     $.each(results, function(index, result) {
       var date = new Date(result.Date);
       var index = date.getDay() - 1;
-      $(".staff:contains('" + result.Staff.Title + "') ~ .itin:eq(" + index + ")").data("id", result.ID);
+      var staff = String(result.Staff.Title).replace(/'/g, "\\'");
+
+      $(".staff:contains('" + staff + "') ~ .itin:eq(" + index + ")").data("id", result.ID);
       // Verify Edit Mode ON/OFF state and populate the correct controls.
       if ($("#btnEdit").hasClass("btn-primary")) {
-        $(".staff:contains('" + result.Staff.Title + "') ~ .itin .am:eq(" + index + ")").val(result.AM);
-        $(".staff:contains('" + result.Staff.Title + "') ~ .itin .pm:eq(" + index + ")").val(result.PM);
+        $(".staff:contains('" + staff + "') ~ .itin .am:eq(" + index + ")").val(result.AM);
+        $(".staff:contains('" + staff + "') ~ .itin .pm:eq(" + index + ")").val(result.PM);
       } else {
-        $(".staff:contains('" + result.Staff.Title + "') ~ .itin .am:eq(" + index + ")").html(result.AM);
-        $(".staff:contains('" + result.Staff.Title + "') ~ .itin .pm:eq(" + index + ")").html(result.PM);
+        $(".staff:contains('" + staff + "') ~ .itin .am:eq(" + index + ")").html(result.AM);
+        $(".staff:contains('" + staff + "') ~ .itin .pm:eq(" + index + ")").html(result.PM);
       }
     });
   } else {
@@ -457,16 +460,13 @@ function onItinsJSON(data) {
   enableFields();
 }
 
-function onQueryFailed(sender, args) {
-  console.log('Request failed.' + args.get_message() +
-    '\n' + args.get_stackTrace());
-}
-
 function onQueryFailedJSON(data, errorCode, errorMessage) {
   if (data.responseJSON != null)
     console.log(data.responseJSON.error.code + ': ' + data.responseJSON.error.message.value);
   else
     console.log(data);
+
+  alert("There was a problem updating the data. Please refresh the page and try agin.");
 }
 
 // Requests staff list of a department or office, or just a single staff(strName)
@@ -480,7 +480,7 @@ function getStaffList(strName, strType) {
   resetFields();
   if (strType == "staff") {
     searchUrl = _spPageContextInfo.webAbsoluteUrl +
-      "/_api/search/query?querytext='PreferredName=\"" + escapeURL(strName) +
+      "/_api/search/query?querytext='PreferredName=\"" + String(escapeURL(strName)).replace(/-/g, "\\-") +
       "\"'&selectproperties='PreferredName,PictureURL,JobTitle,WorkPhone,WorkEmail,AccountName'&" +
       "sourceid='B09A7990-05EA-4AF9-81EF-EDFAB16C4E31'";
   } else {
@@ -519,8 +519,7 @@ function onStaffListJSON(data) {
 
   var results = data.d.query.PrimaryQueryResult.RelevantResults.Table.Rows.results;
   if (results.length > 0) {
-    numReadyForEdit = 0; // Counter for all async calls which has completed retrieving Staff id
-    isReadyForEdit = false; // Flag for the Edit button click event to decide whether to swap in input controls.
+    isLastItem = false; // Flag for checking if the last item is being processed.
     $.each(results, function(index, result) {
       var item = {
         'ID': null,
@@ -531,8 +530,6 @@ function onStaffListJSON(data) {
         'JobTitle': result.Cells.results[4].Value,
         'AccountName': result.Cells.results[7].Value
       };
-
-      arrStaff.push(item);
 
       // This async call retrieves the User ID at the SiteCollection level
       // It also ensures the user is available for record creation
@@ -547,16 +544,28 @@ function onStaffListJSON(data) {
           "Accept": "application/json; odata=verbose",
           "content-type": "application/json;odata=verbose"
         },
-        indexValue: index,
+        node: item,
+        index: index,
         success: function(data) {
-          arrStaff[index].ID = data.d.Id;
-          $(".staff").eq(index).data("id", data.d.Id);
-          //console.log(arrStaff[index].ID + ": " + arrStaff[index].Name);
-          numReadyForEdit++;
-          if (arrStaff.length == numReadyForEdit)
-            isReadyForEdit = true;
+          item.ID = data.d.Id;
+          arrStaff.push(item);
+          //console.log(item.ID + ": " + item.Name);
+          if (results.length == (index + 1)) {
+            isLastItem = true;
+            refreshItins();
+          }
         },
-        error: onQueryFailedJSON
+        error: function(data, errorCode, errorMessage) {
+          if (data.responseJSON != null)
+            console.log(data.responseJSON.error.code + ': ' + data.responseJSON.error.message.value);
+          else
+            console.log(data);
+
+          if (results.length == (index + 1)) {
+            isLastItem = true;
+            refreshItins();
+          }
+        }
       });
     });
 
@@ -571,8 +580,6 @@ function onStaffListJSON(data) {
       acStaff.detach();
       acStaff.appendTo($("#container-grpOption-main"));
     }
-
-    refreshItins();
 
     // No results were found. If the main div is displayed, move the filters
     // to the splash div. Enable splash div and disable main div and display
