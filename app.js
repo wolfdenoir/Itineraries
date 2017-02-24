@@ -159,6 +159,8 @@ function refreshItins() {
     $("#tblItin tbody").append(tr);
   }
 
+  refreshHolidays(offset);
+
   // If Edit Mode is on, create <input> controls;
   // Otherwise create <span> for viewing only.
   if ($("#btnEdit").hasClass("btn-primary")) {
