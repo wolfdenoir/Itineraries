@@ -37,7 +37,7 @@ td.staff {
   width: 250px;
 }
 
-td.staff > div {
+td.staff>div {
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
@@ -61,8 +61,20 @@ td.staff img {
 }
 
 .flip-icon {
-transform: scaleX(-1);
--moz-transform: scaleX(-1);
--webkit-transform: scaleX(-1);
--ms-transform: scaleX(-1);
+  transform: scaleX(-1);
+  -moz-transform: scaleX(-1);
+  -webkit-transform: scaleX(-1);
+  -ms-transform: scaleX(-1);
+}
+
+@media print {
+  #suiteBar {
+    display: none !important;
+  }
+  #s4-ribbonrow {
+    display: none !important;
+  }
+  #s4-titlerow {
+    display: none !important;
+  }
 }

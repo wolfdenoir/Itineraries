@@ -1,7 +1,9 @@
-var _ITIN_LIST_NAME = 'Itineraries';
+var _ITIN_LIST_ID = '04f89ad9-196d-4398-b745-ccd5cc80a704';
+var _STAT_LIST_ID = 'f74bcb96-897d-425c-972e-354fcfc99654';
 var _DEPT_TERMSTORE_ID = '8ed8c9ea-7052-4c1d-a4d7-b9c10bffea6f';
 var _OFFICE_TERMSTORE_ID = '3588dfe5-e02f-4631-b768-ce6137ebbb61';
 var _LOCAL_PEOPLE_RESULT_ID = 'B09A7990-05EA-4AF9-81EF-EDFAB16C4E31';
+var arrHoliday = [];
 var arrStaff = [];
 var arrTypeahead = [];
 var mapTypeahead = {};
@@ -10,6 +12,15 @@ var web = context.get_web();
 var user = web.get_currentUser();
 
 $(document).ready(function() {
+  context.load(user);
+  context.executeQueryAsync(function() {
+    console.log(user);
+    getTypeaheadTerms();
+    getHolidaysJSON($("#weekNo").data("offset"));
+  }, function() {
+    alert("Connection Failed. Refresh the page and try again. :(");
+  });
+
   // On page load, display the current week based on today's date.
   $("#weekNo").text(getWeekOf($("#weekNo").data("offset")));
 
@@ -30,7 +41,7 @@ $(document).ready(function() {
       week--;
       $("#weekNo").data("offset", week);
       $("#weekNo").text(getWeekOf(week));
-      getItinsJSON(week);
+      refreshItins();
       ev.stopPropagation();
     });
 
@@ -44,7 +55,7 @@ $(document).ready(function() {
       week++;
       $("#weekNo").data("offset", week);
       $("#weekNo").text(getWeekOf(week));
-      getItinsJSON(week);
+      refreshItins();
       ev.stopPropagation();
     });
 
@@ -88,14 +99,6 @@ $(document).ready(function() {
     }
   });
 
-  context.load(user);
-  context.executeQueryAsync(function() {
-    console.log(user);
-    getTypeaheadTerms();
-  }, function() {
-    alert("Connection Failed. Refresh the page and try again. :(");
-  });
-
   $('[data-toggle="tooltip"]').tooltip();
 });
 
@@ -126,6 +129,12 @@ function refreshItins() {
 
   if (arrStaff.length == 0)
     return;
+
+  var offset = $("#weekNo").data("offset");
+
+  arrStaff.sort(function(a, b) {
+    return a.index - b.index
+  });
 
   for (var i = 0; i < arrStaff.length; i++) {
     var td = $("<td/>", {
@@ -168,7 +177,7 @@ function refreshItins() {
     var group = $("<div/>", {
       "class": "input-group"
     }).append(am, pm);
-    $(".itin").append(group);
+    $(".itin:not(.itin:has(.stat))").append(group);
     $(".itin .input-group").each(function(index) {
       $(this).attr("tabindex", $("input, button, a").length + index);
     });
@@ -181,7 +190,7 @@ function refreshItins() {
       "class": "pm",
       html: ""
     });
-    $(".itin").append(am, pm);
+    $(".itin:not(.itin:has(.stat))").append(am, pm);
   }
 
   var lastIndex;
@@ -234,9 +243,11 @@ function refreshItins() {
 
     $(this).parent().width($(this).parent().width());
 
-    if ($(this).parent().index() == 1) {
+    if ($(this).parent().index() == 1 ||
+      $(this).parent().prev().is(".itin:has(.stat)")) {
       $(this).append(btnCopyRight);
-    } else if ($(this).parent().is(":last-child")) {
+    } else if ($(this).parent().is(":last-child") ||
+      $(this).parent().next().is(".itin:has(.stat)")) {
       $(this).prepend(btnCopyLeft);
     } else {
       $(this).append(btnCopyRight);
@@ -250,7 +261,29 @@ function refreshItins() {
   // On any change activity, record change in value.
   $("input.am, input.pm").on("change", editItin);
 
-  getItinsJSON($("#weekNo").data("offset"));
+  getItinsJSON(offset);
+}
+
+// Add any STAT holidays that applies to the current week.
+function refreshHolidays(offset) {
+  for (var i = 0; i < arrHoliday.length; i++) {
+    var date = new Date(arrHoliday[i].Date);
+    var monday = getDayOfWeek(offset, 1);
+    var friday = getDayOfWeek(offset, 5);
+    if (date >= monday.setHours(0, 0, 0, 0) &&
+      date <= friday.setHours(23, 59, 59, 999)) {
+      var index = date.getDay() - 1;
+      var stat = $("<span/>", {
+        "class": "stat",
+        html: arrHoliday[i].Title
+      });
+      for (var j = 0; j < arrStaff.length; j++) {
+        var jindex = index + j * 5;
+        $(".itin:eq(" + jindex + ")").empty();
+        $(".itin:eq(" + jindex + ")").append(stat.clone());
+      }
+    }
+  }
 }
 
 function editItin(ev) {
@@ -279,7 +312,7 @@ function editItin(ev) {
   }
 
   var listURL = _spPageContextInfo.webAbsoluteUrl +
-    "/_api/web/lists/GetByTitle('" + _ITIN_LIST_NAME + "')/items";
+    "/_api/web/lists(guid'" + _ITIN_LIST_ID + "')/items";
   if (itemId != undefined && itemId != '') {
     if ((strSibling == null || strSibling == '') &&
       (this.value == null || this.value == '')) {
@@ -415,13 +448,13 @@ function getItinsJSON(offset) {
   }
 
   var searchUrl = _spPageContextInfo.webAbsoluteUrl +
-    "/_api/web/lists/GetByTitle('" + _ITIN_LIST_NAME + "')/items?" +
+    "/_api/web/lists(guid'" + _ITIN_LIST_ID + "')/items?" +
     "$select=ID,StaffId,Staff/Title,Date,AM,PM&$expand=Staff&" +
     clauseStaff + ") and Date ge DateTime'" + getDayOfWeek(offset, 1).toJSON().slice(0, 11) +
     "00:00:00.000Z' and Date le DateTime'" + getDayOfWeek(offset, 5).toJSON().slice(0, 11) +
     "23:59:59.999Z'&$orderby=Staff desc&$top=200";
 
-  //console.log(searchUrl);
+  console.log(searchUrl);
   $.ajax({
     url: searchUrl,
     type: "GET",
@@ -429,6 +462,37 @@ function getItinsJSON(offset) {
       "Accept": "application/json; odata=verbose"
     },
     success: onItinsJSON,
+    error: onQueryFailedJSON
+  });
+}
+
+// Requests STAT holiday data.
+function getHolidaysJSON(offset) {
+  var searchUrl = _spPageContextInfo.webAbsoluteUrl +
+    "/HR/_api/web/lists(guid'" + _STAT_LIST_ID + "')/items?" +
+    "$select=Title,Date&$top=100";
+
+  console.log(searchUrl);
+  $.ajax({
+    url: searchUrl,
+    type: "GET",
+    headers: {
+      "Accept": "application/json; odata=verbose"
+    },
+    success: function(data) {
+      var results = data.d.results;
+      if (results.length > 0) {
+        //console.log(results);
+        $.each(results, function(index, result) {
+          var item = {
+            'Title': result.Title,
+            'Date': result.Date
+          };
+          arrHoliday.push(item);
+        });
+        console.log("STAT days loaded.");
+      }
+    },
     error: onQueryFailedJSON
   });
 }
@@ -446,11 +510,11 @@ function onItinsJSON(data) {
       $(".staff:contains('" + staff + "') ~ .itin:eq(" + index + ")").data("id", result.ID);
       // Verify Edit Mode ON/OFF state and populate the correct controls.
       if ($("#btnEdit").hasClass("btn-primary")) {
-        $(".staff:contains('" + staff + "') ~ .itin .am:eq(" + index + ")").val(result.AM);
-        $(".staff:contains('" + staff + "') ~ .itin .pm:eq(" + index + ")").val(result.PM);
+        $(".staff:contains('" + staff + "') ~ .itin:eq(" + index + ") .am").val(result.AM);
+        $(".staff:contains('" + staff + "') ~ .itin:eq(" + index + ") .pm").val(result.PM);
       } else {
-        $(".staff:contains('" + staff + "') ~ .itin .am:eq(" + index + ")").html(result.AM);
-        $(".staff:contains('" + staff + "') ~ .itin .pm:eq(" + index + ")").html(result.PM);
+        $(".staff:contains('" + staff + "') ~ .itin:eq(" + index + ") .am").html(result.AM);
+        $(".staff:contains('" + staff + "') ~ .itin:eq(" + index + ") .pm").html(result.PM);
       }
     });
   } else {
@@ -528,7 +592,8 @@ function onStaffListJSON(data) {
         'Email': result.Cells.results[6].Value,
         'Phone': (result.Cells.results[5].Value != null ? result.Cells.results[5].Value : ''),
         'JobTitle': result.Cells.results[4].Value,
-        'AccountName': result.Cells.results[7].Value
+        'AccountName': result.Cells.results[7].Value,
+        'index': index
       };
 
       // This async call retrieves the User ID at the SiteCollection level
@@ -545,12 +610,11 @@ function onStaffListJSON(data) {
           "content-type": "application/json;odata=verbose"
         },
         node: item,
-        index: index,
         success: function(data) {
           item.ID = data.d.Id;
           arrStaff.push(item);
           //console.log(item.ID + ": " + item.Name);
-          if (results.length == (index + 1)) {
+          if (results.length == (item.index + 1)) {
             isLastItem = true;
             refreshItins();
           }
@@ -561,7 +625,7 @@ function onStaffListJSON(data) {
           else
             console.log(data);
 
-          if (results.length == (index + 1)) {
+          if (results.length == (item.index + 1)) {
             isLastItem = true;
             refreshItins();
           }
