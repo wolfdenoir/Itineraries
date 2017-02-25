@@ -379,12 +379,6 @@ function editItin(ev) {
 **/
 function copyToCells(target, isDirectedRight) {
   var isDirectedRight = (isDirectedRight === null || isDirectedRight === undefined) ? true : isDirectedRight;
-  if ($(target).parent().parent().index() == 1 && !isDirectedRight ||
-    $(target).parent().parent().is(":last-child") && isDirectedRight) {
-    console.log("Exeption: There are no inputs in the specified direction.");
-    return;
-  }
-
   var am = $(target).siblings(".am").val();
   var pm = $(target).siblings(".pm").val();
 
@@ -452,9 +446,9 @@ function getItinsJSON(offset) {
   var searchUrl = _spPageContextInfo.webAbsoluteUrl +
     "/_api/web/lists(guid'" + _ITIN_LIST_ID + "')/items?" +
     "$select=ID,StaffId,Staff/Title,Date,AM,PM&$expand=Staff&" +
-    clauseStaff + ") and Date ge DateTime'" + getDayOfWeek(offset, 1).toJSON().slice(0, 11) +
-    "00:00:00.000Z' and Date le DateTime'" + getDayOfWeek(offset, 5).toJSON().slice(0, 11) +
-    "23:59:59.999Z'&$orderby=Staff desc&$top=200";
+    clauseStaff + ") and Date ge DateTime'" + toDateStr(getDayOfWeek(offset, 1)) +
+    "T00:00:00.000Z' and Date le DateTime'" + toDateStr(getDayOfWeek(offset, 5)) +
+    "T23:59:59.999Z'&$orderby=Staff desc&$top=200";
 
   console.log(searchUrl);
   $.ajax({
@@ -466,6 +460,18 @@ function getItinsJSON(offset) {
     success: onItinsJSON,
     error: onQueryFailedJSON
   });
+}
+
+function toDateStr(date) {
+  var month = (date.getMonth() + 1);
+  if (month < 10)
+    month = '0' + month;
+
+  var dt = date.getDate();
+  if (dt < 10)
+    dt = '0' + dt;
+
+  return date.getFullYear() + '-' + month + '-' + dt;
 }
 
 // Requests STAT holiday data.
