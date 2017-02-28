@@ -446,8 +446,8 @@ function getItinsJSON(offset) {
   var searchUrl = _spPageContextInfo.webAbsoluteUrl +
     "/_api/web/lists(guid'" + _ITIN_LIST_ID + "')/items?" +
     "$select=ID,StaffId,Staff/Title,Date,AM,PM&$expand=Staff&" +
-    clauseStaff + ") and Date ge DateTime'" + toDateStr(getDayOfWeek(offset, 1)) +
-    "T00:00:00.000Z' and Date le DateTime'" + toDateStr(getDayOfWeek(offset, 5)) +
+    clauseStaff + ") and Date ge DateTime'" + toDateStr(getDayOfWeek(offset, 0)) +
+    "T00:00:00.000Z' and Date le DateTime'" + toDateStr(getDayOfWeek(offset, 6)) +
     "T23:59:59.999Z'&$orderby=Staff desc&$top=200";
 
   console.log(searchUrl);
@@ -513,6 +513,7 @@ function onItinsJSON(data) {
     $.each(results, function(index, result) {
       var date = new Date(result.Date);
       var index = date.getDay() - 1;
+      //console.log(date.toString() + ": index " + index);
       var staff = String(result.Staff.Title).replace(/'/g, "\\'");
 
       $(".staff:contains('" + staff + "') ~ .itin:eq(" + index + ")").data("id", result.ID);
@@ -554,7 +555,7 @@ function getStaffList(strName, strType) {
     searchUrl = _spPageContextInfo.webAbsoluteUrl +
       "/_api/search/query?querytext='PreferredName=\"" + String(escapeURL(strName)).replace(/-/g, "\\-") +
       "\"'&selectproperties='PreferredName,PictureURL,JobTitle,WorkPhone,WorkEmail,AccountName'&" +
-      "sourceid='B09A7990-05EA-4AF9-81EF-EDFAB16C4E31'";
+      "sourceid='" + _LOCAL_PEOPLE_RESULT_ID + "'";
   } else {
     searchTerm = strType + '="' + strName + '" JobTitle<>"Support" AND (' +
       'JobTitle:"a*" JobTitle:"b*" JobTitle:"c*" JobTitle:"d*" JobTitle:"e*"' +
@@ -569,8 +570,7 @@ function getStaffList(strName, strType) {
       "/_api/search/query?querytext='" + searchTerm +
       "'&sortlist='PreferredName:ascending'&" +
       "selectproperties='PreferredName,PictureURL,JobTitle,WorkPhone,WorkEmail,AccountName'&" +
-      "sourceid='B09A7990-05EA-4AF9-81EF-EDFAB16C4E31'&" +
-      "rowlimit='100'";
+      "sourceid='" + _LOCAL_PEOPLE_RESULT_ID + "'&rowlimit='100'";
   }
   //console.log(searchUrl);
 
@@ -685,8 +685,8 @@ function getWeekOf(weekNo) {
 
 // Returns the day of week
 function getDayOfWeek(weekNo, dayNo) {
-  if (dayNo > 5 || dayNo < 1) {
-    jQuery.error("Day number must be between 1 and 5.");
+  if (dayNo > 6 || dayNo < 0) {
+    jQuery.error("Day number must be between 0 and 6.");
     return;
   }
 
