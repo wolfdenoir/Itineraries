@@ -68,13 +68,10 @@ td.staff img {
 }
 
 @media print {
-  #suiteBar {
+  .staff img, .staff span:first-of-type, #container-grpOption-main~div {
     display: none !important;
   }
-  #s4-ribbonrow {
-    display: none !important;
-  }
-  #s4-titlerow {
-    display: none !important;
+  a[href]:after {
+    content: none !important;
   }
 }

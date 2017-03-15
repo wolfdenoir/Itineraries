@@ -588,6 +588,7 @@ function getStaffList(strName, strType) {
 // Writes Staff names into arrStaff and reloads the itin table
 function onStaffListJSON(data) {
   arrStaff = [];
+  itemCount = 0; // Counts the number of items processed, used to check whether all items are ready for display.
 
   var results = data.d.query.PrimaryQueryResult.RelevantResults.Table.Rows.results;
   if (results.length > 0) {
@@ -622,7 +623,7 @@ function onStaffListJSON(data) {
           item.ID = data.d.Id;
           arrStaff.push(item);
           //console.log(item.ID + ": " + item.Name);
-          if (results.length == (item.index + 1)) {
+          if (results.length == ++itemCount) {
             isLastItem = true;
             refreshItins();
           }
@@ -633,7 +634,7 @@ function onStaffListJSON(data) {
           else
             console.log(data);
 
-          if (results.length == (item.index + 1)) {
+          if (results.length == ++itemCount) {
             isLastItem = true;
             refreshItins();
           }
