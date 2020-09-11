@@ -1,7 +1,7 @@
-var _ITIN_LIST_ID = '04f89ad9-196d-4398-b745-ccd5cc80a704';
-var _STAT_LIST_ID = 'f74bcb96-897d-425c-972e-354fcfc99654';
+var _ITIN_LIST_ID = '456a8bda-a9fa-42df-85c3-3f0fdb24796b';
+var _STAT_LIST_ID = '2cef4f39-04bf-4143-bc34-1a512f4def1b';
 var _DEPT_TERMSTORE_ID = '8ed8c9ea-7052-4c1d-a4d7-b9c10bffea6f';
-var _OFFICE_TERMSTORE_ID = '3588dfe5-e02f-4631-b768-ce6137ebbb61';
+var _OFFICE_TERMSTORE_ID = '958e51d7-8a0b-48c9-938e-a37089009efb';
 var _LOCAL_PEOPLE_RESULT_ID = 'B09A7990-05EA-4AF9-81EF-EDFAB16C4E31';
 var arrHoliday = [];
 var arrStaff = [];
@@ -11,13 +11,13 @@ var context = new SP.ClientContext.get_current();
 var web = context.get_web();
 var user = web.get_currentUser();
 
-$(document).ready(function() {
+$(document).ready(function () {
   context.load(user);
-  context.executeQueryAsync(function() {
+  context.executeQueryAsync(function () {
     console.log(user);
     getTypeaheadTerms();
     getHolidaysJSON($("#weekNo").data("offset"));
-  }, function() {
+  }, function () {
     alert("Connection Failed. Refresh the page and try again. :(");
   });
 
@@ -33,7 +33,7 @@ $(document).ready(function() {
     3. On success, enable form controls and populate data
   **/
   $("#prev").on("click",
-    function(ev) {
+    function (ev) {
       if ($(ev.currentTarget).hasClass("disabled"))
         return;
 
@@ -47,7 +47,7 @@ $(document).ready(function() {
 
   // Next button: Move to next week
   $("#next").on("click",
-    function(ev) {
+    function (ev) {
       if ($(ev.currentTarget).hasClass("disabled"))
         return;
 
@@ -68,7 +68,7 @@ $(document).ready(function() {
       b. Editing: Change to Idle state and repopulate table with text labels
   **/
   $("#btnEdit").on("click",
-    function(ev) {
+    function (ev) {
       if ($(ev.currentTarget).hasClass("disabled"))
         return;
 
@@ -92,7 +92,7 @@ $(document).ready(function() {
 
   // If the window has been resized, remove CellCopy buttons and
   // remove static width from the containing div.
-  $(window).resize(function() {
+  $(window).resize(function () {
     if ($(".cellcopy").length > 0) {
       $(".itin").removeAttr('style');
       $(".cellcopy").remove();
@@ -103,7 +103,7 @@ $(document).ready(function() {
 });
 
 function escapeURL(string) {
-  return String(string).replace(/[&<>\-'\/]/g, function(s) {
+  return String(string).replace(/[&<>\-'\/]/g, function (s) {
     var entityMap = {
       "&": "%26",
       "<": "%3C",
@@ -132,7 +132,7 @@ function refreshItins() {
 
   var offset = $("#weekNo").data("offset");
 
-  arrStaff.sort(function(a, b) {
+  arrStaff.sort(function (a, b) {
     return a.index - b.index
   });
 
@@ -180,7 +180,7 @@ function refreshItins() {
       "class": "input-group"
     }).append(am, pm);
     $(".itin:not(.itin:has(.stat))").append(group);
-    $(".itin .input-group").each(function(index) {
+    $(".itin .input-group").each(function (index) {
       $(this).attr("tabindex", $("input, button, a").length + index);
     });
   } else {
@@ -197,7 +197,7 @@ function refreshItins() {
 
   var lastIndex;
 
-  $(".itin .input-group").on("focusin", function(ev) {
+  $(".itin .input-group").on("focusin", function (ev) {
     // Since the event fires every time an element is focused in the div,
     // We only need to handle the first focusin event.
     if (parseInt($(this).attr("tabindex")) == lastIndex)
@@ -223,7 +223,7 @@ function refreshItins() {
       html: '<span class="glyphicon glyphicon-triangle-left" aria-hidden="true"></span>'
     }));
 
-    btnCopyLeft.on("click", function(ev) {
+    btnCopyLeft.on("click", function (ev) {
       copyToCells(this, false);
     });
 
@@ -239,7 +239,7 @@ function refreshItins() {
       html: '<span class="glyphicon glyphicon-triangle-right" aria-hidden="true"></span>'
     }));
 
-    btnCopyRight.on("click", function(ev) {
+    btnCopyRight.on("click", function (ev) {
       copyToCells(this);
     });
 
@@ -383,13 +383,13 @@ function copyToCells(target, isDirectedRight) {
   var pm = $(target).siblings(".pm").val();
 
   if (isDirectedRight) {
-    $(target).parent().parent().nextAll().children().each(function(index) {
+    $(target).parent().parent().nextAll().children().each(function (index) {
       $(this).children(".am").val(am);
       $(this).children(".pm").val(pm);
       $(this).children(".am").trigger("change");
     });
   } else {
-    $(target).parent().parent().prevUntil(".staff").children().each(function(index) {
+    $(target).parent().parent().prevUntil(".staff").children().each(function (index) {
       $(this).children(".am").val(am);
       $(this).children(".pm").val(pm);
       $(this).children(".am").trigger("change");
@@ -438,9 +438,9 @@ function getItinsJSON(offset) {
     resetFields();
   }
 
-  var clauseStaff = "$filter=(Staff eq '" + escapeURL(arrStaff[0].Name) + "'";
+  var clauseStaff = "$filter=(Staff/Title eq '" + escapeURL(arrStaff[0].Name) + "'";
   for (var i = 1; i < arrStaff.length; i++) {
-    clauseStaff += " or Staff eq '" + escapeURL(arrStaff[i].Name) + "'";
+    clauseStaff += " or Staff/Title eq '" + escapeURL(arrStaff[i].Name) + "'";
   }
 
   var searchUrl = _spPageContextInfo.webAbsoluteUrl +
@@ -474,10 +474,10 @@ function toDateStr(date) {
   return date.getFullYear() + '-' + month + '-' + dt;
 }
 
-// Requests STAT holiday data.
+// Requests STAT holiday da ta.
 function getHolidaysJSON(offset) {
   var searchUrl = _spPageContextInfo.webAbsoluteUrl +
-    "/HR/_api/web/lists(guid'" + _STAT_LIST_ID + "')/items?" +
+    "/_api/web/lists(guid'" + _STAT_LIST_ID + "')/items?" +
     "$select=Title,Date&$top=100";
 
   console.log(searchUrl);
@@ -487,11 +487,11 @@ function getHolidaysJSON(offset) {
     headers: {
       "Accept": "application/json; odata=verbose"
     },
-    success: function(data) {
+    success: function (data) {
       var results = data.d.results;
       if (results.length > 0) {
         //console.log(results);
-        $.each(results, function(index, result) {
+        $.each(results, function (index, result) {
           var item = {
             'Title': result.Title,
             'Date': result.Date
@@ -510,7 +510,7 @@ function onItinsJSON(data) {
   var results = data.d.results;
   if (results.length > 0) {
     //console.log(results);
-    $.each(results, function(index, result) {
+    $.each(results, function (index, result) {
       var date = new Date(result.Date);
       var index = date.getDay() - 1;
       //console.log(date.toString() + ": index " + index);
@@ -567,12 +567,12 @@ function getStaffList(strName, strType) {
       'JobTitle:"4*" JobTitle:"5*" JobTitle:"6*" JobTitle:"7*" JobTitle:"8*"' +
       'JobTitle:"9*")';
     searchUrl = _spPageContextInfo.webAbsoluteUrl +
-      "/_api/search/query?querytext='" + searchTerm +
-      "'&sortlist='PreferredName:ascending'&" +
-      "selectproperties='PreferredName,PictureURL,JobTitle,WorkPhone,WorkEmail,AccountName'&" +
-      "sourceid='" + _LOCAL_PEOPLE_RESULT_ID + "'&rowlimit='100'";
+      "/_api/search/query?querytext='" + searchTerm + "'" +
+      "&sortlist='LastName:ascending'" +
+      "&selectproperties='PreferredName,PictureURL,JobTitle,WorkPhone,WorkEmail,AccountName'" +
+      "&sourceid='" + _LOCAL_PEOPLE_RESULT_ID + "'&rowlimit='100'";
   }
-  //console.log(searchUrl);
+  console.log(searchUrl);
 
   $.ajax({
     url: searchUrl,
@@ -593,7 +593,7 @@ function onStaffListJSON(data) {
   var results = data.d.query.PrimaryQueryResult.RelevantResults.Table.Rows.results;
   if (results.length > 0) {
     isLastItem = false; // Flag for checking if the last item is being processed.
-    $.each(results, function(index, result) {
+    $.each(results, function (index, result) {
       var item = {
         'ID': null,
         'Name': result.Cells.results[2].Value,
@@ -619,7 +619,7 @@ function onStaffListJSON(data) {
           "content-type": "application/json;odata=verbose"
         },
         node: item,
-        success: function(data) {
+        success: function (data) {
           item.ID = data.d.Id;
           arrStaff.push(item);
           //console.log(item.ID + ": " + item.Name);
@@ -628,7 +628,7 @@ function onStaffListJSON(data) {
             refreshItins();
           }
         },
-        error: function(data, errorCode, errorMessage) {
+        error: function (data, errorCode, errorMessage) {
           if (data.responseJSON != null)
             console.log(data.responseJSON.error.code + ': ' + data.responseJSON.error.message.value);
           else
@@ -703,7 +703,7 @@ function getTypeaheadTerms() {
 
   $('#acStaff .typeahead').typeahead({
     source: arrTypeahead,
-    updater: function(item) {
+    updater: function (item) {
       getStaffList(mapTypeahead[item].name, mapTypeahead[item].type);
       return item;
     }
@@ -720,7 +720,7 @@ function getDeptTerms() {
   context.load(termStore);
   context.load(termSet);
   context.load(terms);
-  context.executeQueryAsync(Function.createDelegate(this, function(sender, args) {
+  context.executeQueryAsync(Function.createDelegate(this, function (sender, args) {
       var termsEnum = terms.getEnumerator();
       while (termsEnum.moveNext()) {
         var currentTerm = termsEnum.get_current();
@@ -751,14 +751,14 @@ function getOfficeTerms() {
   context.load(termStore);
   context.load(termSet);
   context.load(terms);
-  context.executeQueryAsync(Function.createDelegate(this, function(sender, args) {
+  context.executeQueryAsync(Function.createDelegate(this, function (sender, args) {
       var termsEnum = terms.getEnumerator();
       while (termsEnum.moveNext()) {
         var currentTerm = termsEnum.get_current();
         var termName = currentTerm.get_name();
         var item = {
           "name": termName,
-          "type": "office"
+          "type": "officenumber"
         }
         mapTypeahead[termName] = item;
         arrTypeahead.push(termName);
@@ -791,10 +791,10 @@ function getStaffTerms() {
     headers: {
       "Accept": "application/json; odata=verbose"
     },
-    success: function(data) {
+    success: function (data) {
       var results = data.d.query.PrimaryQueryResult.RelevantResults.Table.Rows.results;
       if (results.length > 0) {
-        $.each(results, function(index, result) {
+        $.each(results, function (index, result) {
           var item = {
             "name": result.Cells.results[2].Value,
             "AccountName": result.Cells.results[3].Value,
