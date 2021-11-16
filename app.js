@@ -450,7 +450,7 @@ function getItinsJSON(offset) {
     "T00:00:00.000Z' and Date le DateTime'" + toDateStr(getDayOfWeek(offset, 6)) +
     "T23:59:59.999Z'&$orderby=Staff desc&$top=200";
 
-  console.log(searchUrl);
+  //console.log(searchUrl);
   $.ajax({
     url: searchUrl,
     type: "GET",
@@ -474,13 +474,13 @@ function toDateStr(date) {
   return date.getFullYear() + '-' + month + '-' + dt;
 }
 
-// Requests STAT holiday da ta.
+// Requests STAT holiday data.
 function getHolidaysJSON(offset) {
   var searchUrl = _spPageContextInfo.webAbsoluteUrl +
     "/_api/web/lists(guid'" + _STAT_LIST_ID + "')/items?" +
     "$select=Title,Date&$top=100";
 
-  console.log(searchUrl);
+  //console.log(searchUrl);
   $.ajax({
     url: searchUrl,
     type: "GET",
@@ -498,7 +498,7 @@ function getHolidaysJSON(offset) {
           };
           arrHoliday.push(item);
         });
-        console.log("STAT days loaded.");
+        console.log("STAT days loaded " + results.length + " values.");
       }
     },
     error: onQueryFailedJSON
@@ -572,7 +572,7 @@ function getStaffList(strName, strType) {
       "&selectproperties='PreferredName,PictureURL,JobTitle,WorkPhone,WorkEmail,AccountName'" +
       "&sourceid='" + _LOCAL_PEOPLE_RESULT_ID + "'&rowlimit='100'";
   }
-  console.log(searchUrl);
+  //console.log(searchUrl);
 
   $.ajax({
     url: searchUrl,
@@ -594,14 +594,51 @@ function onStaffListJSON(data) {
   if (results.length > 0) {
     isLastItem = false; // Flag for checking if the last item is being processed.
     $.each(results, function (index, result) {
+
+      var iii = 0;
+      while(result.Cells.results[iii].Key != "PreferredName"){
+        iii++
+      }
+      var staffname = result.Cells.results[iii].Value;
+
+      var iii = 0;
+      while(result.Cells.results[iii].Key != "PictureURL"){
+        iii++
+      }
+      var picture = (result.Cells.results[iii].Value != null ? result.Cells.results[iii].Value : '/_layouts/15/images/person.gif');
+
+      var iii = 0;
+      while(result.Cells.results[iii].Key != "WorkEmail"){
+        iii++
+      }
+      var email = result.Cells.results[iii].Value;
+
+      var iii = 0;
+      while(result.Cells.results[iii].Key != "WorkPhone"){
+        iii++
+      }
+      var phone = (result.Cells.results[iii].Value != null ? result.Cells.results[iii].Value : '');
+
+      var iii = 0;
+      while(result.Cells.results[iii].Key != "JobTitle"){
+        iii++
+      }
+      var jobtitle = result.Cells.results[iii].Value;
+
+      var iii = 0;
+      while(result.Cells.results[iii].Key != "AccountName"){
+        iii++
+      }
+      var acctname = result.Cells.results[iii].Value;
+
       var item = {
         'ID': null,
-        'Name': result.Cells.results[2].Value,
-        'Picture': (result.Cells.results[3].Value != null ? result.Cells.results[3].Value : '/_layouts/15/images/person.gif'),
-        'Email': result.Cells.results[6].Value,
-        'Phone': (result.Cells.results[5].Value != null ? result.Cells.results[5].Value : ''),
-        'JobTitle': result.Cells.results[4].Value,
-        'AccountName': result.Cells.results[7].Value,
+        'Name': staffname,
+        'Picture': picture,
+        'Email': email,
+        'Phone': phone,
+        'JobTitle': jobtitle,
+        'AccountName': acctname,
         'index': index
       };
 
@@ -722,6 +759,7 @@ function getDeptTerms() {
   context.load(terms);
   context.executeQueryAsync(Function.createDelegate(this, function (sender, args) {
       var termsEnum = terms.getEnumerator();
+      var termCount = 0;
       while (termsEnum.moveNext()) {
         var currentTerm = termsEnum.get_current();
         var termName = currentTerm.get_name();
@@ -731,8 +769,9 @@ function getDeptTerms() {
         }
         mapTypeahead[termName] = item;
         arrTypeahead.push(termName);
+        termCount++;
       }
-      console.log("Department terms loaded.");
+      console.log("Department terms loaded " + termCount + " values.");
 
       getOfficeTerms();
     }),
@@ -753,17 +792,19 @@ function getOfficeTerms() {
   context.load(terms);
   context.executeQueryAsync(Function.createDelegate(this, function (sender, args) {
       var termsEnum = terms.getEnumerator();
+      var termCount = 0;
       while (termsEnum.moveNext()) {
         var currentTerm = termsEnum.get_current();
         var termName = currentTerm.get_name();
         var item = {
           "name": termName,
-          "type": "officenumber"
+          "type": "office"
         }
         mapTypeahead[termName] = item;
         arrTypeahead.push(termName);
+        termCount++;
       }
-      console.log("Office terms loaded.");
+      console.log("Office terms loaded " + termCount + " values.");
     }),
     Function.createDelegate(this, this.failedListTaxonomySession));
 }
@@ -795,15 +836,28 @@ function getStaffTerms() {
       var results = data.d.query.PrimaryQueryResult.RelevantResults.Table.Rows.results;
       if (results.length > 0) {
         $.each(results, function (index, result) {
+          var iii = 0;
+          while(result.Cells.results[iii].Key != "PreferredName"){
+            iii++
+          }
+          var staffname = result.Cells.results[iii].Value;
+
+          iii = 0;
+          while(result.Cells.results[iii].Key != "AccountName"){
+            iii++
+          }
+          var acctname = result.Cells.results[iii].Value;
+
           var item = {
-            "name": result.Cells.results[2].Value,
-            "AccountName": result.Cells.results[3].Value,
+            "name": staffname,
+            "AccountName": acctname,
             "type": "staff"
           };
-          mapTypeahead[result.Cells.results[2].Value] = item;
-          arrTypeahead.push(result.Cells.results[2].Value);
+          mapTypeahead[staffname] = item;
+          arrTypeahead.push(staffname);
         });
-        console.log("Staff terms loaded.");
+        //console.log(results);
+        console.log("Staff terms loaded " + results.length + " values.");
       } else {
         console.log("No staff terms found.");
       }
